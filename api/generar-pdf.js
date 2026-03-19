@@ -67,7 +67,7 @@ export default async function handler(req, res) {
       contentType: 'application/pdf'
     });
     formData.append('upload_preset', uploadPreset);
-    formData.append('public_id', 'cotizaciones/' + safeFilename);
+    formData.append('public_id', 'cotizaciones/' + safeFilename + '-' + Date.now());
     formData.append('resource_type', 'raw');
 
     const cldResponse = await fetch(
