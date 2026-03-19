@@ -1,0 +1,9 @@
+{
+  "name": "blue-servidor",
+  "version": "1.0.0",
+  "description": "Servidor Blue Comunicadores — genera PDF y sube a Cloudinary",
+  "dependencies": {
+    "form-data": "^4.0.0",
+    "node-fetch": "^2.7.0"
+  }
+}
