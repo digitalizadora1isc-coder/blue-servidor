@@ -54,7 +54,7 @@ export default async function handler(req, res) {
       throw new Error('PDFShift error ' + pdfResponse.status + ': ' + errText);
     }
 
-    const pdfBuffer = await pdfResponse.buffer();
+    const pdfBuffer = Buffer.from(await pdfResponse.arrayBuffer());
 
     // ── PASO 2: Subir PDF a Cloudinary ────────────────────────────────────
     const cloudName = process.env.CLD_CLOUD;
