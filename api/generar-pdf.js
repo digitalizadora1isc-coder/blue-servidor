@@ -83,8 +83,7 @@ export default async function handler(req, res) {
     const cldData = await cldResponse.json();
 
     // URL pública — se abre en el navegador (no descarga)
-    const publicUrl = cldData.secure_url.replace('/upload/', '/upload/fl_attachment:false/');
-
+    const publicUrl = cldData.secure_url.replace('/upload/', '/upload/fl_inline/');
     return res.status(200).json({
       ok: true,
       url: publicUrl
