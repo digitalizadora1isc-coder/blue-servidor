@@ -81,6 +81,7 @@ app.post('/generar-pdf', async (req, res) => {
     });
     formData.append('upload_preset', uploadPreset);
     formData.append('public_id', 'cotizaciones/' + safeFilename + '.pdf');
+    formData.append('access_mode', 'public');
 
     console.log('Subiendo a Cloudinary...');
 
