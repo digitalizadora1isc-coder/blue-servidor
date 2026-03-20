@@ -1,18 +1,18 @@
 // server.js
-// Servidor Blue Comunicadores — Railway
-// Genera PDF con PDFShift y lo sube a Cloudinary
+// Servidor Blue Comunicadores — Render
+// Genera PDF con PDFShift y lo sube a Cloudinary con signed upload
 
+const crypto  = require('crypto');
 const express = require('express');
-const fetch = require('node-fetch');
+const fetch   = require('node-fetch');
 const FormData = require('form-data');
 
-const app = express();
+const app  = express();
 const PORT = process.env.PORT || 3000;
 
-// Parsear JSON en el body
 app.use(express.json({ limit: '10mb' }));
 
-// CORS — permite llamadas desde cualquier origen
+// CORS
 app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
@@ -21,12 +21,18 @@ app.use((req, res, next) => {
   next();
 });
 
-// ── Ruta de prueba ────────────────────────────────────────────────────────────
+// Genera la firma SHA-256 requerida por Cloudinary para signed uploads
+function cloudinarySign(params, apiSecret) {
+  const str = Object.keys(params).sort()
+    .map(k => `${k}=${params[k]}`)
+    .join('&');
+  return crypto.createHash('sha256').update(str + apiSecret).digest('hex');
+}
+
 app.get('/', (req, res) => {
   res.json({ ok: true, mensaje: 'Servidor Blue Comunicadores funcionando ✅' });
 });
 
-// ── Ruta principal: generar PDF y subir a Cloudinary ─────────────────────────
 app.post('/generar-pdf', async (req, res) => {
   const { html, filename } = req.body;
 
@@ -37,7 +43,6 @@ app.post('/generar-pdf', async (req, res) => {
   const safeFilename = (filename || 'cotizacion').replace(/[^a-zA-Z0-9_-]/g, '_');
 
   try {
-
     // ── PASO 1: Generar PDF con PDFShift ──────────────────────────────────────
     const pdfshiftKey = process.env.PDFSHIFT_KEY;
     if (!pdfshiftKey) throw new Error('Falta PDFSHIFT_KEY en variables de entorno');
@@ -50,12 +55,7 @@ app.post('/generar-pdf', async (req, res) => {
         'Authorization': 'Basic ' + Buffer.from('api:' + pdfshiftKey).toString('base64'),
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        source: html,
-        format: 'A4',
-        margin: '0',
-        use_print: false
-      })
+      body: JSON.stringify({ source: html, format: 'A4', margin: '0', use_print: false })
     });
 
     if (!pdfResponse.ok) {
@@ -66,24 +66,39 @@ app.post('/generar-pdf', async (req, res) => {
     const pdfBuffer = await pdfResponse.buffer();
     console.log('PDF generado, tamaño:', pdfBuffer.length, 'bytes');
 
-    // ── PASO 2: Subir PDF a Cloudinary ────────────────────────────────────────
-    const cloudName = process.env.CLD_CLOUD;
-    const uploadPreset = process.env.CLD_PRESET;
+    // ── PASO 2: Signed upload a Cloudinary ───────────────────────────────────
+    const cloudName  = process.env.CLD_CLOUD;
+    const apiKey     = process.env.CLD_API_KEY;
+    const apiSecret  = process.env.CLD_API_SECRET;
+    const preset     = process.env.CLD_PRESET;
 
-    if (!cloudName || !uploadPreset) {
-      throw new Error('Faltan CLD_CLOUD o CLD_PRESET en variables de entorno');
+    if (!cloudName || !apiKey || !apiSecret || !preset) {
+      throw new Error('Faltan variables de entorno: CLD_CLOUD, CLD_API_KEY, CLD_API_SECRET o CLD_PRESET');
     }
 
-    const formData = new FormData();
-    formData.append('file', pdfBuffer, {
-      filename: safeFilename + '.pdf',
-      contentType: 'application/pdf'
-    });
-    formData.append('upload_preset', uploadPreset);
-    formData.append('public_id', 'cotizaciones/' + safeFilename + '.pdf');
-    formData.append('access_mode', 'public');
+    const timestamp = Math.floor(Date.now() / 1000);
+    const publicId  = 'cotizaciones/' + safeFilename + '.pdf';
 
-    console.log('Subiendo a Cloudinary...');
+    // Solo se firman los parámetros que se envían al API (excepto file y api_key)
+    const paramsToSign = {
+      access_mode:    'public',
+      public_id:      publicId,
+      timestamp:      timestamp,
+      upload_preset:  preset
+    };
+
+    const signature = cloudinarySign(paramsToSign, apiSecret);
+
+    const formData = new FormData();
+    formData.append('file', pdfBuffer, { filename: safeFilename + '.pdf', contentType: 'application/pdf' });
+    formData.append('api_key',      apiKey);
+    formData.append('timestamp',    timestamp);
+    formData.append('signature',    signature);
+    formData.append('upload_preset', preset);
+    formData.append('public_id',    publicId);
+    formData.append('access_mode',  'public');
+
+    console.log('Subiendo a Cloudinary (signed)...');
 
     const cldResponse = await fetch(
       'https://api.cloudinary.com/v1_1/' + cloudName + '/raw/upload',
@@ -98,10 +113,7 @@ app.post('/generar-pdf', async (req, res) => {
     const cldData = await cldResponse.json();
     console.log('Subido a Cloudinary:', cldData.secure_url);
 
-    // URL pública — termina en .pdf para que el navegador lo abra directamente
-    const publicUrl = cldData.secure_url;
-
-    return res.status(200).json({ ok: true, url: publicUrl });
+    return res.status(200).json({ ok: true, url: cldData.secure_url });
 
   } catch (error) {
     console.error('Error en /generar-pdf:', error.message);
@@ -109,7 +121,6 @@ app.post('/generar-pdf', async (req, res) => {
   }
 });
 
-// ── Iniciar servidor ──────────────────────────────────────────────────────────
 app.listen(PORT, () => {
   console.log('Servidor Blue Comunicadores corriendo en puerto', PORT);
 });
