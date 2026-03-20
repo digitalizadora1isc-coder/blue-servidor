@@ -1,4 +1,4 @@
-// server.js — Blue Comunicadores
+// server.js — Blue Comunicadores v2
 // Genera landing page, la guarda en GitHub y envía correo con Brevo API
 
 const express = require('express');
