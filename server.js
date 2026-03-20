@@ -19,7 +19,7 @@ const GH_HEADERS = {
 const BREVO_KEY  = process.env.BREVO_API_KEY;
 const EMAIL_FROM = 'digitalizadora1.isc@gmail.com';
 
-app.use(express.json({ limit: '5mb' }));
+app.use(express.json({ limit: '10mb' }));
 app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin',  '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
@@ -50,19 +50,30 @@ function esc(s) {
 // ── Genera HTML de la landing page ────────────────────────────────────────────
 
 function generarLandingHTML(d) {
-  const servicios = (d.items || []).map(it => `
-    <tr>
-      <td style="padding:10px 12px;border-bottom:1px solid #e8edf4;font-size:14px;color:#2d3748;">${esc(it.desc)}</td>
-      <td style="padding:10px 12px;border-bottom:1px solid #e8edf4;font-size:14px;color:#2d3748;text-align:center;">${esc(it.qty)}</td>
-      <td style="padding:10px 12px;border-bottom:1px solid #e8edf4;font-size:14px;color:#2d3748;text-align:right;">S/ ${fmt(it.unit)}</td>
-      <td style="padding:10px 12px;border-bottom:1px solid #e8edf4;font-size:14px;font-weight:600;color:#0f2744;text-align:right;">S/ ${fmt(it.total)}</td>
-    </tr>`).join('');
+  const logoTag = d.logoSrc
+    ? `<img src="${d.logoSrc}" style="height:80px;width:auto;display:block;" alt="BLUE COMUNICADORES">`
+    : `<span style="font-size:22px;font-weight:900;color:#0f2744;letter-spacing:-1px;font-family:Montserrat,Arial,sans-serif;">BLUE<br>COMUNICADORES</span>`;
 
-  const consideraciones = (d.consideraciones || '')
-    .split('\n')
-    .filter(l => l.trim())
-    .map(l => `<li style="margin-bottom:8px;color:#4a5568;font-size:14px;">${esc(l.replace(/^[•\-*]\s*/, ''))}</li>`)
+  const rows = (d.items || []).map((it, idx) => {
+    const bg = idx % 2 === 1 ? '#f7f7f7' : '#ffffff';
+    return `<tr>
+      <td style="background:${bg};padding:8px 10px;border:1px solid #bbb;font-weight:700;font-size:13px;color:#000;text-align:center;vertical-align:top;width:32px;">${it.num || idx+1}</td>
+      ${it.cod ? `<td style="background:${bg};padding:8px 10px;border:1px solid #bbb;font-weight:700;font-size:11px;color:#000;vertical-align:top;white-space:nowrap;">${esc(it.cod)}</td>` : ''}
+      <td style="background:${bg};padding:8px 10px;border:1px solid #bbb;font-weight:700;font-size:11px;text-transform:uppercase;color:#000;vertical-align:top;line-height:1.4;">${esc(it.nom||'')}</td>
+      <td style="background:${bg};padding:8px 10px;border:1px solid #bbb;font-size:11px;color:#000;vertical-align:top;line-height:1.5;white-space:pre-line;">${esc(it.desc||'')}</td>
+      <td style="background:${bg};padding:8px 10px;border:1px solid #bbb;font-weight:700;font-size:12px;color:#000;text-align:right;vertical-align:top;white-space:nowrap;">S/${fmt(it.tar||it.total||0)}</td>
+    </tr>`;
+  }).join('');
+
+  const consList = (d.consideraciones || '').split('\n').filter(l => l.trim())
+    .map(l => `<li style="font-size:12px;margin-bottom:5px;line-height:1.5;color:#222;">${esc(l.replace(/^[•\-*]\s*/, ''))}</li>`)
     .join('');
+
+  const cargoHtml = d.cargo ? `<p style="font-size:12px;color:#555;margin:2px 0 10px;font-family:Montserrat,Arial,sans-serif;">${esc(d.cargo)}</p>` : `<div style="margin-bottom:10px;"></div>`;
+  const firmCargoHtml = d.firmanteCargo ? `<p style="font-size:11px;color:#555;margin:2px 0 0;font-family:Montserrat,Arial,sans-serif;">${esc(d.firmanteCargo)}</p>` : '';
+
+  const waText = encodeURIComponent('Hola, tengo una consulta sobre la cotización Cot. ' + (d.cotNum||''));
+  const mailSubj = encodeURIComponent('Consulta cotización Cot. ' + (d.cotNum||''));
 
   return `<!DOCTYPE html>
 <html lang="es">
@@ -70,140 +81,146 @@ function generarLandingHTML(d) {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Cotización ${esc(d.cotNum)} — Blue Comunicadores</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
   *{box-sizing:border-box;margin:0;padding:0;}
-  body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f4f8;color:#2d3748;}
-  a{color:inherit;text-decoration:none;}
-  .hero{background:linear-gradient(135deg,#0f2744 0%,#1a3d6e 60%,#1e6fb5 100%);padding:48px 24px 56px;text-align:center;}
-  .hero-logo{width:64px;height:64px;background:#fff;border-radius:16px;display:inline-flex;align-items:center;justify-content:center;margin-bottom:20px;}
-  .hero-logo svg{width:40px;height:40px;}
-  .hero h1{font-size:28px;font-weight:700;color:#fff;margin-bottom:6px;letter-spacing:-0.5px;}
-  .hero p{font-size:15px;color:#93c5fd;margin-bottom:0;}
-  .badge{display:inline-block;background:rgba(255,255,255,0.15);color:#fff;font-size:12px;font-weight:600;padding:4px 14px;border-radius:20px;margin-top:12px;letter-spacing:0.5px;}
-  .container{max-width:680px;margin:-32px auto 0;padding:0 16px 48px;}
-  .card{background:#fff;border-radius:16px;box-shadow:0 4px 24px rgba(15,39,68,0.10);overflow:hidden;margin-bottom:20px;}
-  .card-header{background:#f7f9fc;padding:16px 24px;border-bottom:1px solid #e8edf4;display:flex;align-items:center;gap:10px;}
-  .card-header svg{width:20px;height:20px;color:#1e6fb5;flex-shrink:0;}
-  .card-header h2{font-size:15px;font-weight:700;color:#0f2744;text-transform:uppercase;letter-spacing:0.5px;}
-  .card-body{padding:20px 24px;}
-  .meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
-  .meta-item label{display:block;font-size:11px;font-weight:700;color:#9aa3b0;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px;}
-  .meta-item span{font-size:14px;color:#2d3748;font-weight:500;}
-  table{width:100%;border-collapse:collapse;}
-  thead tr{background:#f7f9fc;}
-  thead th{padding:10px 12px;font-size:11px;font-weight:700;color:#9aa3b0;text-transform:uppercase;letter-spacing:0.5px;text-align:left;}
-  thead th:last-child,thead th:nth-child(3),thead th:nth-child(2){text-align:right;}
-  thead th:nth-child(2){text-align:center;}
-  .total-row{background:#0f2744;}
-  .total-row td{padding:14px 12px;color:#fff;font-weight:700;font-size:16px;}
-  .total-row td:last-child{text-align:right;font-size:20px;}
-  ul{padding-left:20px;}
-  .cta{text-align:center;padding:28px 24px;}
-  .btn{display:inline-block;padding:14px 32px;border-radius:10px;font-size:15px;font-weight:700;margin:6px;transition:opacity .2s;}
-  .btn-wa{background:#25d366;color:#fff;}
-  .btn-mail{background:#1e6fb5;color:#fff;}
-  .btn:hover{opacity:.88;}
-  .footer{text-align:center;padding:24px 16px;color:#9aa3b0;font-size:13px;}
-  .footer strong{color:#0f2744;}
-  @media(max-width:480px){
-    .meta-grid{grid-template-columns:1fr;}
-    .hero h1{font-size:22px;}
-    .btn{display:block;width:100%;margin:6px 0;}
+  body{font-family:Montserrat,Arial,sans-serif;background:#e8edf4;color:#222;}
+  a{text-decoration:none;color:inherit;}
+  .page{max-width:780px;margin:24px auto;background:#fff;box-shadow:0 4px 32px rgba(0,0,0,0.13);}
+
+  /* HEADER */
+  .hdr{background:#fff;padding:14px 28px;display:flex;align-items:center;justify-content:flex-end;border-bottom:3px solid #4EB5EF;}
+
+  /* BANNER (placeholder fotos) */
+  .banner{height:80px;background:linear-gradient(90deg,#0f2744 0%,#1a5a9a 40%,#4EB5EF 70%,#0f2744 100%);display:flex;align-items:center;justify-content:center;gap:16px;overflow:hidden;}
+  .banner-dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,0.35);}
+
+  /* BODY */
+  .body{padding:20px 32px 10px;}
+  .cli-empresa{font-size:14px;font-weight:700;color:#000;line-height:1.3;}
+  .cli-contacto{font-size:13px;font-weight:600;color:#000;margin-top:1px;line-height:1.3;}
+  .cli-ciudad{font-size:11px;color:#555;margin-top:2px;line-height:1.3;}
+  .cotnum{font-size:13px;font-weight:700;color:#000;border-bottom:2px solid #aaa;display:inline-block;padding-bottom:2px;margin:6px 0 14px;}
+
+  /* TABLA SERVICIOS */
+  .svc-table{width:100%;border-collapse:collapse;border:2px solid #aaa;margin-bottom:16px;}
+  .svc-table td{padding:8px 10px;border:1px solid #bbb;vertical-align:top;color:#000;}
+  .svc-head-title{background:#1a1a1a;color:#fff;text-align:center;padding:9px;font-weight:800;font-size:12px;text-transform:uppercase;letter-spacing:1px;}
+  .svc-head-intro{background:#fff;color:#333;font-size:10px;padding:8px 10px;border-bottom:1px solid #bbb;}
+
+  /* CONSIDERACIONES */
+  .cons-title{font-weight:700;font-size:11px;color:#4EB5EF;text-decoration:underline;margin-bottom:6px;}
+  .cons-list{padding-left:18px;margin-bottom:14px;}
+
+  /* FIRMA */
+  .firma-name{font-weight:700;color:#4EB5EF;font-size:13px;margin:2px 0 0;}
+
+  /* CTA BOTONES (solo web) */
+  .cta-section{background:#f4f8fc;border-top:2px solid #e0eaf4;padding:20px 32px;text-align:center;margin-top:10px;}
+  .cta-title{font-size:13px;color:#555;margin-bottom:14px;}
+  .btn-wa{display:inline-block;background:#25d366;color:#fff;font-weight:700;font-size:13px;padding:11px 28px;border-radius:8px;margin:5px;}
+  .btn-mail{display:inline-block;background:#1e6fb5;color:#fff;font-weight:700;font-size:13px;padding:11px 28px;border-radius:8px;margin:5px;}
+
+  /* FOOTER */
+  .ftr{background:#4EB5EF;padding:16px 28px;display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;}
+  .ftr-left,.ftr-right{font-size:10px;color:#fff;line-height:1.9;font-weight:600;}
+  .ftr-right{text-align:right;}
+  .ftr-social{background:#3ca8e0;padding:10px 28px;display:flex;justify-content:center;align-items:center;gap:24px;flex-wrap:wrap;}
+  .ftr-social a{color:#fff;font-size:11px;font-weight:700;opacity:.9;display:flex;align-items:center;gap:6px;}
+  .ftr-social a:hover{opacity:1;}
+
+  @media(max-width:600px){
+    .body{padding:16px 16px 8px;}
+    .cta-section{padding:16px;}
+    .ftr{flex-direction:column;}
+    .ftr-right{text-align:left;}
+    .btn-wa,.btn-mail{display:block;width:100%;margin:4px 0;}
   }
 </style>
 </head>
 <body>
 
-<div class="hero">
-  <div class="hero-logo">
-    <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect width="40" height="40" rx="10" fill="#0f2744"/>
-      <path d="M10 20C10 14.477 14.477 10 20 10C25.523 10 30 14.477 30 20C30 25.523 25.523 30 20 30C14.477 30 10 25.523 10 20Z" fill="#1e6fb5"/>
-      <path d="M16 20L19 23L24 17" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-    </svg>
-  </div>
-  <h1>Blue Comunicadores</h1>
-  <p>Tu cotización personalizada está lista</p>
-  <span class="badge">COT-${esc(d.cotNum)}</span>
-</div>
+<div class="page">
 
-<div class="container">
+  <!-- HEADER -->
+  <div class="hdr">${logoTag}</div>
 
-  <!-- Info general -->
-  <div class="card">
-    <div class="card-header">
-      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
-      <h2>Información del cliente</h2>
-    </div>
-    <div class="card-body">
-      <div class="meta-grid">
-        <div class="meta-item"><label>Empresa</label><span>${esc(d.empresa)}</span></div>
-        <div class="meta-item"><label>Contacto</label><span>${esc(d.contacto)}</span></div>
-        <div class="meta-item"><label>N° Cotización</label><span>${esc(d.cotNum)}</span></div>
-        <div class="meta-item"><label>Fecha</label><span>${esc(d.fecha)}</span></div>
-        ${d.vigencia ? `<div class="meta-item"><label>Vigencia</label><span>${esc(d.vigencia)} días</span></div>` : ''}
-        ${d.moneda ? `<div class="meta-item"><label>Moneda</label><span>${esc(d.moneda)}</span></div>` : ''}
-      </div>
-    </div>
+  <!-- BANNER (placeholder fotos de trabajos) -->
+  <div class="banner">
+    <div class="banner-dot"></div><div class="banner-dot"></div>
+    <span style="color:rgba(255,255,255,0.5);font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;">Blue Comunicadores · Trabajos realizados</span>
+    <div class="banner-dot"></div><div class="banner-dot"></div>
   </div>
 
-  <!-- Servicios -->
-  <div class="card">
-    <div class="card-header">
-      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
-      <h2>Detalle de servicios</h2>
-    </div>
-    <div class="card-body" style="padding:0;">
-      <table>
-        <thead><tr>
-          <th style="padding-left:24px;">Descripción</th>
-          <th>Cant.</th>
-          <th>P. Unit.</th>
-          <th style="padding-right:24px;">Total</th>
-        </tr></thead>
-        <tbody>${servicios}</tbody>
-        <tfoot>
-          ${d.subtotal ? `<tr><td colspan="3" style="padding:10px 12px;font-size:13px;color:#9aa3b0;text-align:right;">Subtotal</td><td style="padding:10px 12px;font-size:14px;font-weight:600;text-align:right;color:#0f2744;">S/ ${fmt(d.subtotal)}</td></tr>` : ''}
-          ${d.igv ? `<tr><td colspan="3" style="padding:6px 12px;font-size:13px;color:#9aa3b0;text-align:right;">IGV (18%)</td><td style="padding:6px 12px;font-size:14px;font-weight:600;text-align:right;color:#0f2744;">S/ ${fmt(d.igv)}</td></tr>` : ''}
-          <tr class="total-row">
-            <td colspan="3" style="padding-left:24px;">TOTAL A PAGAR</td>
-            <td style="padding-right:24px;">S/ ${fmt(d.total)}</td>
-          </tr>
-        </tfoot>
-      </table>
-    </div>
+  <!-- BODY -->
+  <div class="body">
+    <p class="cli-empresa">${esc(d.empresa)}</p>
+    <p class="cli-contacto">${esc(d.contacto)}</p>
+    ${cargoHtml}
+    <p class="cli-ciudad">${esc(d.ciudad||'Lima')}, ${esc(d.fecha)}</p>
+    <p class="cotnum">Cot. ${esc(d.cotNum)}</p>
+
+    <!-- TABLA SERVICIOS -->
+    <table class="svc-table">
+      <tbody>
+        <tr><td colspan="5" class="svc-head-title">PRESUPUESTO DE SERVICIO</td></tr>
+        <tr><td colspan="5" class="svc-head-intro">La presente comunicación busca hacerle llegar nuestros costos de los servicios solicitados:</td></tr>
+        ${rows}
+        <tr>
+          <td colspan="4" style="background:#1a1a1a;padding:10px;font-weight:800;font-size:13px;text-transform:uppercase;letter-spacing:1px;color:#fff;text-align:right;border:1px solid #aaa;">TOTAL</td>
+          <td style="background:#1a1a1a;padding:10px;font-weight:800;font-size:14px;color:#4EB5EF;text-align:right;border:1px solid #aaa;white-space:nowrap;">S/${fmt(d.total)}</td>
+        </tr>
+      </tbody>
+    </table>
+
+    ${consList ? `
+    <p class="cons-title">CONSIDERACIONES:</p>
+    <ul class="cons-list">${consList}</ul>` : ''}
+
+    <p style="font-size:11px;margin-bottom:12px;color:#000;line-height:1.6;">Estamos seguros de poder ofrecerle un servicio de calidad; quedamos a la espera de cualquier consulta o inquietud, sin otro particular.</p>
+    <p style="font-size:11px;margin-bottom:4px;color:#000;">Atentamente,</p>
+    <div style="height:48px;"></div>
+    <p class="firma-name">${esc(d.firmante||'ZARA ARKA')}</p>
+    ${firmCargoHtml}
   </div>
 
-  ${consideraciones ? `
-  <!-- Consideraciones -->
-  <div class="card">
-    <div class="card-header">
-      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-      <h2>Consideraciones</h2>
-    </div>
-    <div class="card-body">
-      <ul>${consideraciones}</ul>
-    </div>
-  </div>` : ''}
-
-  <!-- CTA -->
-  <div class="card">
-    <div class="cta">
-      <p style="font-size:15px;color:#4a5568;margin-bottom:20px;">¿Tienes alguna consulta? Contáctanos directamente.</p>
-      <a class="btn btn-wa" href="https://wa.me/51${esc(d.whatsapp || '999999999')}?text=${encodeURIComponent('Hola, tengo una consulta sobre la cotización ' + d.cotNum)}">
-        💬 WhatsApp
-      </a>
-      <a class="btn btn-mail" href="mailto:${esc(d.emailEmpresa || 'ventas@bluecomunicadores.com')}?subject=${encodeURIComponent('Consulta cotización ' + d.cotNum)}">
-        ✉️ Enviar correo
-      </a>
-    </div>
+  <!-- CTA (solo web, no aparece en PDF) -->
+  <div class="cta-section">
+    <p class="cta-title">¿Tienes alguna consulta sobre esta cotización?</p>
+    <a class="btn-wa" href="https://wa.me/51${esc(d.whatsapp||'985568329')}?text=${waText}">💬 WhatsApp</a>
+    <a class="btn-mail" href="mailto:sara@bluecomunicadores.com?subject=${mailSubj}">✉️ Enviar correo</a>
   </div>
 
-</div>
+  <!-- FOOTER -->
+  <div class="ftr">
+    <div class="ftr-left">
+      Calle Las Acacias 270 Miraflores · Lima, Perú<br>
+      C +51 985 568 329<br>
+      sara@bluecomunicadores.com<br>
+      administracion@bluecomunicadores.com
+    </div>
+    <div class="ftr-right">
+      R.U.C. 20546289436<br>
+      BCP: Cta. Soles 194-7124953020<br>
+      BBVA: Cta. Dólares 0011-0317020033771250<br>
+      BBVA: Cta. Soles 0011-0876-0200016193-01
+    </div>
+  </div>
+  <div class="ftr-social">
+    <a href="https://www.tiktok.com/@bluecomunicadores" target="_blank">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.32 6.32 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.18 8.18 0 004.78 1.52V6.78a4.85 4.85 0 01-1.01-.09z"/></svg>
+      TikTok
+    </a>
+    <a href="https://www.instagram.com/bluecomunicadores" target="_blank">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+      Instagram
+    </a>
+    <a href="https://www.facebook.com/share/17Fw4Ac97v/" target="_blank">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+      Facebook
+    </a>
+  </div>
 
-<div class="footer">
-  <strong>Blue Comunicadores</strong> · Cotización válida por ${esc(d.vigencia || '30')} días<br>
-  Este documento es de carácter confidencial y está dirigido exclusivamente al destinatario indicado.
 </div>
 
 </body>
