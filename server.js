@@ -52,7 +52,6 @@ function esc(s) {
 function generarLandingHTML(d) {
   const LOGO     = 'https://res.cloudinary.com/dmuj4p26r/image/upload/v1774040025/Blue_Color_pu4nwv.png';
   const PHOTOS   = [
-    'https://res.cloudinary.com/dmuj4p26r/image/upload/v1774041183/logo1_av4kna.png',
     'https://res.cloudinary.com/dmuj4p26r/image/upload/v1774041183/ips_lv02je.png',
     'https://res.cloudinary.com/dmuj4p26r/image/upload/v1774041183/cuaderno_b2bfk3.png',
     'https://res.cloudinary.com/dmuj4p26r/image/upload/v1774041184/pc_cpwtrr.png',
@@ -87,13 +86,13 @@ function generarLandingHTML(d) {
     const tar = it.tar || it.total || 0;
     const unit = qty > 1 ? (tar / qty) : tar;
     return `<tr>
-      <td style="background:${bg};padding:7px 10px;border:1px solid #ccc;font-weight:700;font-size:12px;color:#000;text-align:center;vertical-align:top;">${it.num||idx+1}</td>
-      ${hasCod ? `<td style="background:${bg};padding:7px 10px;border:1px solid #ccc;font-size:10px;color:#000;vertical-align:top;white-space:nowrap;">${esc(it.cod||'')}</td>` : ''}
-      <td style="background:${bg};padding:7px 10px;border:1px solid #ccc;font-weight:700;font-size:11px;text-transform:uppercase;color:#000;vertical-align:top;line-height:1.4;">${esc(it.nom||'')}</td>
-      <td style="background:${bg};padding:7px 10px;border:1px solid #ccc;font-size:10.5px;color:#333;vertical-align:top;line-height:1.55;white-space:pre-line;">${esc(it.desc||'')}</td>
-      <td style="background:${bg};padding:7px 10px;border:1px solid #ccc;font-size:11px;color:#000;text-align:center;vertical-align:top;">${qty}</td>
-      <td style="background:${bg};padding:7px 10px;border:1px solid #ccc;font-size:11px;color:#000;text-align:right;vertical-align:top;white-space:nowrap;">S/${fmt(unit)}</td>
-      <td style="background:${bg};padding:7px 10px;border:1px solid #ccc;font-weight:700;font-size:12px;color:#000;text-align:right;vertical-align:top;white-space:nowrap;">S/${fmt(tar)}</td>
+      <td style="background:${bg};padding:7px 10px;border:1px solid #4EB5EF;font-weight:700;font-size:12px;color:#000;text-align:center;vertical-align:top;">${it.num||idx+1}</td>
+      ${hasCod ? `<td style="background:${bg};padding:7px 10px;border:1px solid #4EB5EF;font-size:10px;color:#000;vertical-align:top;white-space:nowrap;">${esc(it.cod||'')}</td>` : ''}
+      <td style="background:${bg};padding:7px 10px;border:1px solid #4EB5EF;font-weight:700;font-size:11px;text-transform:uppercase;color:#000;vertical-align:top;line-height:1.4;">${esc(it.nom||'')}</td>
+      <td style="background:${bg};padding:7px 10px;border:1px solid #4EB5EF;font-size:10.5px;color:#333;vertical-align:top;line-height:1.55;white-space:pre-line;">${esc(it.desc||'')}</td>
+      <td style="background:${bg};padding:7px 10px;border:1px solid #4EB5EF;font-size:11px;color:#000;text-align:center;vertical-align:top;">${qty}</td>
+      <td style="background:${bg};padding:7px 10px;border:1px solid #4EB5EF;font-size:11px;color:#000;text-align:right;vertical-align:top;white-space:nowrap;">S/${fmt(unit)}</td>
+      <td style="background:${bg};padding:7px 10px;border:1px solid #4EB5EF;font-weight:700;font-size:12px;color:#000;text-align:right;vertical-align:top;white-space:nowrap;">S/${fmt(tar)}</td>
     </tr>`;
   }).join('');
 
@@ -127,7 +126,7 @@ body{font-family:Montserrat,Arial,sans-serif;background:#d8e3ee;color:#222;}
 a{text-decoration:none;color:inherit;}
 .page{max-width:800px;margin:20px auto 40px;background:#fff;box-shadow:0 6px 40px rgba(0,0,0,0.15);}
 .hdr{display:flex;align-items:stretch;min-height:110px;border-bottom:3px solid #4EB5EF;}
-.hdr-logo{background:#fff;padding:14px 18px;display:flex;align-items:center;justify-content:center;flex-shrink:0;width:160px;}
+.hdr-logo{background:#4EB5EF;padding:14px 18px;display:flex;align-items:center;justify-content:center;flex-shrink:0;width:160px;}
 .hdr-photos{flex:1;display:flex;overflow:hidden;}
 .cli{padding:16px 28px 6px;}
 .cli-empresa{font-size:14px;font-weight:700;color:#000;line-height:1.3;margin-bottom:1px;}
@@ -135,7 +134,7 @@ a{text-decoration:none;color:inherit;}
 .cli-fecha{font-size:11px;color:#444;line-height:1.3;margin-bottom:3px;}
 .cli-cotnum{font-size:12px;font-weight:700;color:#000;display:inline-block;border-bottom:2px solid #aaa;padding-bottom:2px;margin-top:4px;}
 .svc-wrap{padding:10px 28px 0;}
-.svc-table{width:100%;border-collapse:collapse;border:2px solid #aaa;margin-bottom:14px;font-family:Montserrat,Arial,sans-serif;}
+.svc-table{width:100%;border-collapse:collapse;border:2px solid #4EB5EF;margin-bottom:14px;font-family:Montserrat,Arial,sans-serif;}
 .svc-title{background:#4EB5EF;color:#fff;text-align:center;padding:9px 12px;font-weight:800;font-size:12px;text-transform:uppercase;letter-spacing:1.5px;border:1px solid #3aa0d8;}
 .svc-intro{background:#fff;color:#555;font-size:10px;line-height:1.5;padding:8px 12px;border-bottom:1px solid #ccc;font-style:italic;}
 .cons-wrap{padding:0 28px 6px;}
@@ -197,8 +196,8 @@ a{text-decoration:none;color:inherit;}
       <tbody>
         ${rows}
         <tr>
-          <td colspan="${colTotal - 1}" style="background:#0f2744;padding:9px 12px;font-weight:800;font-size:12px;text-transform:uppercase;letter-spacing:1px;color:#fff;text-align:right;border:1px solid #0a1d33;">TOTAL</td>
-          <td style="background:#0f2744;padding:9px 12px;font-weight:800;font-size:14px;color:#4EB5EF;text-align:right;border:1px solid #0a1d33;white-space:nowrap;">S/${fmt(d.total)}</td>
+          <td colspan="${colTotal - 1}" style="background:#4EB5EF;padding:9px 12px;font-weight:800;font-size:12px;text-transform:uppercase;letter-spacing:1px;color:#fff;text-align:right;border:1px solid #3aa0d8;">TOTAL</td>
+          <td style="background:#4EB5EF;padding:9px 12px;font-weight:800;font-size:14px;color:#fff;text-align:right;border:1px solid #3aa0d8;white-space:nowrap;">S/${fmt(d.total)}</td>
         </tr>
       </tbody>
     </table>
@@ -237,6 +236,9 @@ a{text-decoration:none;color:inherit;}
     <a class="ftr-icon" href="https://www.facebook.com/share/17Fw4Ac97v/" target="_blank" title="Facebook">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="#fff"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
     </a>
+    <a class="ftr-icon" href="https://www.linkedin.com/company/bluecomunicadores/" target="_blank" title="LinkedIn">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="#fff"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+    </a>
     <a href="https://www.bluecomunicadores.com" target="_blank" style="font-size:10px;font-weight:700;color:#0f2744;letter-spacing:0.5px;margin-left:6px;text-decoration:underline;">WWW.BLUECOMUNICADORES.COM</a>
   </div>
 
@@ -250,12 +252,10 @@ a{text-decoration:none;color:inherit;}
     </div>
     <div class="ftr-banks">
       <div class="bank-row">
-        <span class="bank-logo-bcp">BCP</span>
-        <div class="bank-data">Cuenta Soles<br>194-7124953020</div>
+        <div class="bank-data">BCP · Cuenta Soles<br>194-7124953020</div>
       </div>
       <div class="bank-row">
-        <span class="bank-logo-bbva">BBVA</span>
-        <div class="bank-data">Cta. Dólares 0011-0317020033771250<br>Cta. Soles 0011-0876-0200016193-01</div>
+        <div class="bank-data">BBVA · Cta. Dólares 0011-0317020033771250<br>BBVA · Cta. Soles 0011-0876-0200016193-01</div>
       </div>
     </div>
   </div>
