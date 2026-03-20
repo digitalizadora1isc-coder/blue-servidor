@@ -51,26 +51,37 @@ function esc(s) {
 
 function generarLandingHTML(d) {
   const logoTag = d.logoSrc
-    ? `<img src="${d.logoSrc}" style="height:80px;width:auto;display:block;" alt="BLUE COMUNICADORES">`
-    : `<span style="font-size:22px;font-weight:900;color:#0f2744;letter-spacing:-1px;font-family:Montserrat,Arial,sans-serif;">BLUE<br>COMUNICADORES</span>`;
+    ? `<img src="${d.logoSrc}" style="height:90px;width:auto;display:block;" alt="BLUE COMUNICADORES">`
+    : `<div style="display:inline-grid;grid-template-columns:1fr 1fr;gap:3px;width:64px;">
+        <div style="background:#0f2744;height:30px;display:flex;align-items:center;justify-content:center;"><span style="color:#fff;font-weight:900;font-size:12px;font-family:Arial,sans-serif;">BL</span></div>
+        <div style="background:#4EB5EF;height:30px;"></div>
+        <div style="background:#1a3d6e;height:30px;"></div>
+        <div style="background:#0f2744;height:30px;display:flex;align-items:center;justify-content:center;"><span style="color:#4EB5EF;font-weight:900;font-size:12px;font-family:Arial,sans-serif;">UE</span></div>
+       </div>`;
 
   const rows = (d.items || []).map((it, idx) => {
-    const bg = idx % 2 === 1 ? '#f7f7f7' : '#ffffff';
+    const bg = idx % 2 === 1 ? '#f8f8f8' : '#ffffff';
+    const colspan = it.cod ? '' : '';
     return `<tr>
-      <td style="background:${bg};padding:8px 10px;border:1px solid #bbb;font-weight:700;font-size:13px;color:#000;text-align:center;vertical-align:top;width:32px;">${it.num || idx+1}</td>
-      ${it.cod ? `<td style="background:${bg};padding:8px 10px;border:1px solid #bbb;font-weight:700;font-size:11px;color:#000;vertical-align:top;white-space:nowrap;">${esc(it.cod)}</td>` : ''}
-      <td style="background:${bg};padding:8px 10px;border:1px solid #bbb;font-weight:700;font-size:11px;text-transform:uppercase;color:#000;vertical-align:top;line-height:1.4;">${esc(it.nom||'')}</td>
-      <td style="background:${bg};padding:8px 10px;border:1px solid #bbb;font-size:11px;color:#000;vertical-align:top;line-height:1.5;white-space:pre-line;">${esc(it.desc||'')}</td>
-      <td style="background:${bg};padding:8px 10px;border:1px solid #bbb;font-weight:700;font-size:12px;color:#000;text-align:right;vertical-align:top;white-space:nowrap;">S/${fmt(it.tar||it.total||0)}</td>
+      <td style="background:${bg};padding:8px 10px;border:1px solid #ccc;font-weight:700;font-size:12px;color:#000;text-align:center;vertical-align:top;width:28px;">${it.num||idx+1}</td>
+      ${it.cod ? `<td style="background:${bg};padding:8px 10px;border:1px solid #ccc;font-weight:700;font-size:10px;color:#000;vertical-align:top;white-space:nowrap;">${esc(it.cod)}</td>` : ''}
+      <td style="background:${bg};padding:8px 10px;border:1px solid #ccc;font-weight:700;font-size:11px;text-transform:uppercase;color:#000;vertical-align:top;line-height:1.4;">${esc(it.nom||'')}</td>
+      <td style="background:${bg};padding:8px 10px;border:1px solid #ccc;font-size:10.5px;color:#333;vertical-align:top;line-height:1.55;white-space:pre-line;">${esc(it.desc||'')}</td>
+      <td style="background:${bg};padding:8px 10px;border:1px solid #ccc;font-weight:700;font-size:12px;color:#000;text-align:right;vertical-align:top;white-space:nowrap;">S/${fmt(it.tar||it.total||0)}</td>
     </tr>`;
   }).join('');
 
+  const colCount = (d.items||[]).length > 0 && (d.items[0].cod) ? 5 : 4;
+
   const consList = (d.consideraciones || '').split('\n').filter(l => l.trim())
-    .map(l => `<li style="font-size:12px;margin-bottom:5px;line-height:1.5;color:#222;">${esc(l.replace(/^[•\-*]\s*/, ''))}</li>`)
+    .map(l => `<li style="font-size:11px;margin-bottom:5px;line-height:1.55;color:#222;">${esc(l.replace(/^[•\-*]\s*/, ''))}</li>`)
     .join('');
 
-  const cargoHtml = d.cargo ? `<p style="font-size:12px;color:#555;margin:2px 0 10px;font-family:Montserrat,Arial,sans-serif;">${esc(d.cargo)}</p>` : `<div style="margin-bottom:10px;"></div>`;
-  const firmCargoHtml = d.firmanteCargo ? `<p style="font-size:11px;color:#555;margin:2px 0 0;font-family:Montserrat,Arial,sans-serif;">${esc(d.firmanteCargo)}</p>` : '';
+  const cargoHtml = d.cargo
+    ? `<p style="font-size:11px;color:#555;margin:1px 0 8px;font-family:Montserrat,Arial,sans-serif;">${esc(d.cargo)}</p>`
+    : `<div style="margin-bottom:8px;"></div>`;
+  const firmCargoHtml = d.firmanteCargo
+    ? `<p style="font-size:10px;color:#555;margin:2px 0 0;">${esc(d.firmanteCargo)}</p>` : '';
 
   const waText = encodeURIComponent('Hola, tengo una consulta sobre la cotización Cot. ' + (d.cotNum||''));
   const mailSubj = encodeURIComponent('Consulta cotización Cot. ' + (d.cotNum||''));
@@ -83,146 +94,175 @@ function generarLandingHTML(d) {
 <title>Cotización ${esc(d.cotNum)} — Blue Comunicadores</title>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
-  *{box-sizing:border-box;margin:0;padding:0;}
-  body{font-family:Montserrat,Arial,sans-serif;background:#e8edf4;color:#222;}
-  a{text-decoration:none;color:inherit;}
-  .page{max-width:780px;margin:24px auto;background:#fff;box-shadow:0 4px 32px rgba(0,0,0,0.13);}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:Montserrat,Arial,sans-serif;background:#d8e3ee;color:#222;}
+a{text-decoration:none;color:inherit;}
+.page{max-width:800px;margin:20px auto 40px;background:#fff;box-shadow:0 6px 40px rgba(0,0,0,0.15);}
 
-  /* HEADER */
-  .hdr{background:#fff;padding:14px 28px;display:flex;align-items:center;justify-content:flex-end;border-bottom:3px solid #4EB5EF;}
+/* ── HEADER ── */
+.hdr{display:flex;align-items:stretch;min-height:110px;}
+.hdr-logo{background:#fff;padding:14px 20px;display:flex;align-items:center;flex-shrink:0;width:180px;}
+.hdr-photos{flex:1;display:grid;grid-template-columns:repeat(4,1fr);gap:0;overflow:hidden;}
+.hdr-photo{background:linear-gradient(135deg,#1a3d6e,#4EB5EF);position:relative;overflow:hidden;}
+.hdr-photo:nth-child(2){background:linear-gradient(135deg,#0f2744,#2a6fa8);}
+.hdr-photo:nth-child(3){background:linear-gradient(135deg,#4EB5EF,#1a7abf);}
+.hdr-photo:nth-child(4){background:linear-gradient(135deg,#0f2744,#4EB5EF);}
+.hdr-photo-label{position:absolute;bottom:6px;left:0;right:0;text-align:center;font-size:8px;color:rgba(255,255,255,0.6);font-weight:600;letter-spacing:0.5px;text-transform:uppercase;}
 
-  /* BANNER (placeholder fotos) */
-  .banner{height:80px;background:linear-gradient(90deg,#0f2744 0%,#1a5a9a 40%,#4EB5EF 70%,#0f2744 100%);display:flex;align-items:center;justify-content:center;gap:16px;overflow:hidden;}
-  .banner-dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,0.35);}
+/* ── INFO CLIENTE ── */
+.cli{padding:16px 28px 6px;}
+.cli-empresa{font-size:14px;font-weight:700;color:#000;line-height:1.3;margin-bottom:1px;}
+.cli-contacto{font-size:13px;font-weight:600;color:#000;line-height:1.3;margin-bottom:1px;}
+.cli-cargo{font-size:11px;color:#555;line-height:1.3;margin-bottom:6px;}
+.cli-fecha{font-size:11px;color:#444;line-height:1.3;margin-bottom:3px;}
+.cli-cotnum{font-size:12px;font-weight:700;color:#000;display:inline-block;border-bottom:2px solid #aaa;padding-bottom:2px;margin-top:4px;}
 
-  /* BODY */
-  .body{padding:20px 32px 10px;}
-  .cli-empresa{font-size:14px;font-weight:700;color:#000;line-height:1.3;}
-  .cli-contacto{font-size:13px;font-weight:600;color:#000;margin-top:1px;line-height:1.3;}
-  .cli-ciudad{font-size:11px;color:#555;margin-top:2px;line-height:1.3;}
-  .cotnum{font-size:13px;font-weight:700;color:#000;border-bottom:2px solid #aaa;display:inline-block;padding-bottom:2px;margin:6px 0 14px;}
+/* ── TABLA SERVICIOS ── */
+.svc-wrap{padding:10px 28px 0;}
+.svc-table{width:100%;border-collapse:collapse;border:2px solid #aaa;margin-bottom:14px;font-family:Montserrat,Arial,sans-serif;}
+.svc-title{background:#4EB5EF;color:#fff;text-align:center;padding:9px 12px;font-weight:800;font-size:12px;text-transform:uppercase;letter-spacing:1.5px;border:1px solid #3aa0d8;}
+.svc-intro{background:#fff;color:#333;font-size:10px;line-height:1.5;padding:8px 12px;border-bottom:1px solid #ccc;}
+.svc-table td{padding:7px 10px;border:1px solid #ccc;vertical-align:top;color:#000;font-family:Montserrat,Arial,sans-serif;}
+.svc-total-label{background:#0f2744;padding:9px 12px;font-weight:800;font-size:12px;text-transform:uppercase;letter-spacing:1px;color:#fff;text-align:right;border:1px solid #0a1d33;}
+.svc-total-val{background:#0f2744;padding:9px 12px;font-weight:800;font-size:14px;color:#4EB5EF;text-align:right;border:1px solid #0a1d33;white-space:nowrap;}
 
-  /* TABLA SERVICIOS */
-  .svc-table{width:100%;border-collapse:collapse;border:2px solid #aaa;margin-bottom:16px;}
-  .svc-table td{padding:8px 10px;border:1px solid #bbb;vertical-align:top;color:#000;}
-  .svc-head-title{background:#1a1a1a;color:#fff;text-align:center;padding:9px;font-weight:800;font-size:12px;text-transform:uppercase;letter-spacing:1px;}
-  .svc-head-intro{background:#fff;color:#333;font-size:10px;padding:8px 10px;border-bottom:1px solid #bbb;}
+/* ── CONSIDERACIONES ── */
+.cons-wrap{padding:0 28px 6px;}
+.cons-title{font-weight:700;font-size:11px;color:#4EB5EF;text-decoration:underline;margin-bottom:6px;font-family:Montserrat,Arial,sans-serif;}
+.cons-list{padding-left:18px;margin-bottom:12px;}
 
-  /* CONSIDERACIONES */
-  .cons-title{font-weight:700;font-size:11px;color:#4EB5EF;text-decoration:underline;margin-bottom:6px;}
-  .cons-list{padding-left:18px;margin-bottom:14px;}
+/* ── CIERRE ── */
+.cierre{padding:0 28px 16px;}
+.firma-name{font-weight:700;color:#4EB5EF;font-size:13px;margin-top:2px;font-family:Montserrat,Arial,sans-serif;}
 
-  /* FIRMA */
-  .firma-name{font-weight:700;color:#4EB5EF;font-size:13px;margin:2px 0 0;}
+/* ── CTA (solo web) ── */
+.cta-section{background:#f0f6fc;border-top:3px solid #4EB5EF;padding:18px 28px;text-align:center;}
+.btn-wa{display:inline-block;background:#25d366;color:#fff;font-weight:700;font-size:13px;padding:11px 26px;border-radius:7px;margin:5px;font-family:Montserrat,Arial,sans-serif;}
+.btn-mail{display:inline-block;background:#0f2744;color:#fff;font-weight:700;font-size:13px;padding:11px 26px;border-radius:7px;margin:5px;font-family:Montserrat,Arial,sans-serif;}
 
-  /* CTA BOTONES (solo web) */
-  .cta-section{background:#f4f8fc;border-top:2px solid #e0eaf4;padding:20px 32px;text-align:center;margin-top:10px;}
-  .cta-title{font-size:13px;color:#555;margin-bottom:14px;}
-  .btn-wa{display:inline-block;background:#25d366;color:#fff;font-weight:700;font-size:13px;padding:11px 28px;border-radius:8px;margin:5px;}
-  .btn-mail{display:inline-block;background:#1e6fb5;color:#fff;font-weight:700;font-size:13px;padding:11px 28px;border-radius:8px;margin:5px;}
+/* ── FOOTER ── */
+.ftr-social{background:#fff;border-top:1px solid #dde5ef;padding:10px 28px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.ftr-social a{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:6px;background:#0f2744;}
+.ftr-social a:hover{background:#4EB5EF;}
+.ftr-social .web-link{font-size:10px;font-weight:700;color:#0f2744;letter-spacing:0.5px;margin-left:4px;}
+.ftr-main{background:#4EB5EF;padding:14px 28px;display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;}
+.ftr-info{font-size:9.5px;color:#fff;line-height:2;font-weight:600;font-family:Montserrat,Arial,sans-serif;}
+.ftr-banks{display:flex;flex-direction:column;gap:6px;align-items:flex-end;}
+.bank-row{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,0.15);border-radius:6px;padding:5px 10px;}
+.bank-name{font-size:10px;font-weight:800;color:#fff;letter-spacing:0.5px;min-width:32px;}
+.bank-data{font-size:9px;font-weight:600;color:#fff;line-height:1.5;text-align:right;}
 
-  /* FOOTER */
-  .ftr{background:#4EB5EF;padding:16px 28px;display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;}
-  .ftr-left,.ftr-right{font-size:10px;color:#fff;line-height:1.9;font-weight:600;}
-  .ftr-right{text-align:right;}
-  .ftr-social{background:#3ca8e0;padding:10px 28px;display:flex;justify-content:center;align-items:center;gap:24px;flex-wrap:wrap;}
-  .ftr-social a{color:#fff;font-size:11px;font-weight:700;opacity:.9;display:flex;align-items:center;gap:6px;}
-  .ftr-social a:hover{opacity:1;}
-
-  @media(max-width:600px){
-    .body{padding:16px 16px 8px;}
-    .cta-section{padding:16px;}
-    .ftr{flex-direction:column;}
-    .ftr-right{text-align:left;}
-    .btn-wa,.btn-mail{display:block;width:100%;margin:4px 0;}
-  }
+@media(max-width:600px){
+  .hdr-photos{grid-template-columns:repeat(2,1fr);}
+  .hdr-logo{width:140px;}
+  .cli,.svc-wrap,.cons-wrap,.cierre,.cta-section{padding-left:16px;padding-right:16px;}
+  .ftr-main{flex-direction:column;}
+  .ftr-banks{align-items:flex-start;}
+  .btn-wa,.btn-mail{display:block;width:100%;margin:4px 0;}
+}
 </style>
 </head>
 <body>
-
 <div class="page">
 
-  <!-- HEADER -->
-  <div class="hdr">${logoTag}</div>
-
-  <!-- BANNER (placeholder fotos de trabajos) -->
-  <div class="banner">
-    <div class="banner-dot"></div><div class="banner-dot"></div>
-    <span style="color:rgba(255,255,255,0.5);font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;">Blue Comunicadores · Trabajos realizados</span>
-    <div class="banner-dot"></div><div class="banner-dot"></div>
+  <!-- HEADER: logo + franja fotos -->
+  <div class="hdr">
+    <div class="hdr-logo">${logoTag}</div>
+    <div class="hdr-photos">
+      <div class="hdr-photo"><div class="hdr-photo-label">Instalaciones</div></div>
+      <div class="hdr-photo"><div class="hdr-photo-label">Proyectos</div></div>
+      <div class="hdr-photo"><div class="hdr-photo-label">Equipos</div></div>
+      <div class="hdr-photo"><div class="hdr-photo-label">Trabajos</div></div>
+    </div>
   </div>
 
-  <!-- BODY -->
-  <div class="body">
+  <!-- INFO CLIENTE -->
+  <div class="cli">
     <p class="cli-empresa">${esc(d.empresa)}</p>
     <p class="cli-contacto">${esc(d.contacto)}</p>
     ${cargoHtml}
-    <p class="cli-ciudad">${esc(d.ciudad||'Lima')}, ${esc(d.fecha)}</p>
-    <p class="cotnum">Cot. ${esc(d.cotNum)}</p>
+    <p class="cli-fecha">${esc(d.ciudad||'Lima')}, ${esc(d.fecha)}</p>
+    <span class="cli-cotnum">Cot. ${esc(d.cotNum)}</span>
+  </div>
 
-    <!-- TABLA SERVICIOS -->
+  <!-- TABLA SERVICIOS -->
+  <div class="svc-wrap">
     <table class="svc-table">
       <tbody>
-        <tr><td colspan="5" class="svc-head-title">PRESUPUESTO DE SERVICIO</td></tr>
-        <tr><td colspan="5" class="svc-head-intro">La presente comunicación busca hacerle llegar nuestros costos de los servicios solicitados:</td></tr>
+        <tr><td colspan="${colCount}" class="svc-title">PRESUPUESTO DE SERVICIO</td></tr>
+        <tr><td colspan="${colCount}" class="svc-intro">La presente comunicación busca hacerle llegar nuestros costos de los soluciones solicitadas a continuación:</td></tr>
         ${rows}
         <tr>
-          <td colspan="4" style="background:#1a1a1a;padding:10px;font-weight:800;font-size:13px;text-transform:uppercase;letter-spacing:1px;color:#fff;text-align:right;border:1px solid #aaa;">TOTAL</td>
-          <td style="background:#1a1a1a;padding:10px;font-weight:800;font-size:14px;color:#4EB5EF;text-align:right;border:1px solid #aaa;white-space:nowrap;">S/${fmt(d.total)}</td>
+          <td colspan="${colCount - 1}" class="svc-total-label">TOTAL</td>
+          <td class="svc-total-val">S/${fmt(d.total)}</td>
         </tr>
       </tbody>
     </table>
+  </div>
 
-    ${consList ? `
+  <!-- CONSIDERACIONES -->
+  ${consList ? `<div class="cons-wrap">
     <p class="cons-title">CONSIDERACIONES:</p>
-    <ul class="cons-list">${consList}</ul>` : ''}
+    <ul class="cons-list">${consList}</ul>
+  </div>` : ''}
 
-    <p style="font-size:11px;margin-bottom:12px;color:#000;line-height:1.6;">Estamos seguros de poder ofrecerle un servicio de calidad; quedamos a la espera de cualquier consulta o inquietud, sin otro particular.</p>
-    <p style="font-size:11px;margin-bottom:4px;color:#000;">Atentamente,</p>
-    <div style="height:48px;"></div>
+  <!-- CIERRE + FIRMA -->
+  <div class="cierre">
+    <p style="font-size:10.5px;margin-bottom:10px;color:#000;line-height:1.6;">Estamos seguros de poder ofrecerle un servicio de calidad; quedamos a la espera de cualquier consulta o inquietud, sin otro particular.</p>
+    <p style="font-size:10.5px;margin-bottom:4px;color:#000;">Atentamente,</p>
+    <div style="height:44px;"></div>
     <p class="firma-name">${esc(d.firmante||'ZARA ARKA')}</p>
     ${firmCargoHtml}
   </div>
 
-  <!-- CTA (solo web, no aparece en PDF) -->
+  <!-- CTA (solo web) -->
   <div class="cta-section">
-    <p class="cta-title">¿Tienes alguna consulta sobre esta cotización?</p>
-    <a class="btn-wa" href="https://wa.me/51${esc(d.whatsapp||'985568329')}?text=${waText}">💬 WhatsApp</a>
+    <p style="font-size:12px;color:#555;margin-bottom:14px;">¿Tienes alguna consulta sobre esta cotización?</p>
+    <a class="btn-wa" href="https://wa.me/51${esc(d.whatsapp||'985568329')}?text=${waText}">💬 Escribir por WhatsApp</a>
     <a class="btn-mail" href="mailto:sara@bluecomunicadores.com?subject=${mailSubj}">✉️ Enviar correo</a>
   </div>
 
-  <!-- FOOTER -->
-  <div class="ftr">
-    <div class="ftr-left">
+  <!-- FOOTER SOCIAL -->
+  <div class="ftr-social">
+    <a href="https://www.tiktok.com/@bluecomunicadores" target="_blank" title="TikTok">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.32 6.32 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.18 8.18 0 004.78 1.52V6.78a4.85 4.85 0 01-1.01-.09z"/></svg>
+    </a>
+    <a href="https://www.instagram.com/bluecomunicadores" target="_blank" title="Instagram">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+    </a>
+    <a href="https://www.facebook.com/share/17Fw4Ac97v/" target="_blank" title="Facebook">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+    </a>
+    <span class="web-link">WWW.BLUECOMUNICADORES.COM</span>
+  </div>
+
+  <!-- FOOTER PRINCIPAL -->
+  <div class="ftr-main">
+    <div class="ftr-info">
       Calle Las Acacias 270 Miraflores · Lima, Perú<br>
       C +51 985 568 329<br>
       sara@bluecomunicadores.com<br>
       administracion@bluecomunicadores.com
     </div>
-    <div class="ftr-right">
-      R.U.C. 20546289436<br>
-      BCP: Cta. Soles 194-7124953020<br>
-      BBVA: Cta. Dólares 0011-0317020033771250<br>
-      BBVA: Cta. Soles 0011-0876-0200016193-01
+    <div class="ftr-banks">
+      <div class="bank-row">
+        <div>
+          <div style="font-size:8px;font-weight:800;color:#fff;letter-spacing:0.5px;margin-bottom:1px;">BCP</div>
+          <div style="width:28px;height:14px;background:#fff;border-radius:3px;display:flex;align-items:center;justify-content:center;"><span style="font-size:8px;font-weight:900;color:#e30613;">BCP</span></div>
+        </div>
+        <div class="bank-data">Cuenta Soles<br>194-7124953020</div>
+      </div>
+      <div class="bank-row">
+        <div>
+          <div style="font-size:8px;font-weight:800;color:#fff;letter-spacing:0.5px;margin-bottom:1px;">BBVA</div>
+          <div style="width:28px;height:14px;background:#fff;border-radius:3px;display:flex;align-items:center;justify-content:center;"><span style="font-size:7px;font-weight:900;color:#004481;">BBVA</span></div>
+        </div>
+        <div class="bank-data">Cta. Dólares 0011-0317020033771250<br>Cta. Soles 0011-0876-0200016193-01</div>
+      </div>
     </div>
-  </div>
-  <div class="ftr-social">
-    <a href="https://www.tiktok.com/@bluecomunicadores" target="_blank">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.32 6.32 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.18 8.18 0 004.78 1.52V6.78a4.85 4.85 0 01-1.01-.09z"/></svg>
-      TikTok
-    </a>
-    <a href="https://www.instagram.com/bluecomunicadores" target="_blank">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
-      Instagram
-    </a>
-    <a href="https://www.facebook.com/share/17Fw4Ac97v/" target="_blank">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
-      Facebook
-    </a>
   </div>
 
 </div>
-
 </body>
 </html>`;
 }
