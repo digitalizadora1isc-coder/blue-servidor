@@ -67,14 +67,10 @@ app.post('/generar-pdf', async (req, res) => {
     console.log('PDF generado, tamaño:', pdfBuffer.length, 'bytes');
 
     // ── PASO 2: Signed upload a Cloudinary ───────────────────────────────────
-    const cloudName  = process.env.CLD_CLOUD;
-    const apiKey     = process.env.CLD_API_KEY;
-    const apiSecret  = process.env.CLD_API_SECRET;
-    const preset     = process.env.CLD_PRESET;
-
-    if (!cloudName || !apiKey || !apiSecret || !preset) {
-      throw new Error('Faltan variables de entorno: CLD_CLOUD, CLD_API_KEY, CLD_API_SECRET o CLD_PRESET');
-    }
+    const cloudName  = process.env.CLD_CLOUD     || 'dmuj4p26r';
+    const apiKey     = process.env.CLD_API_KEY   || '465135418248187';
+    const apiSecret  = process.env.CLD_API_SECRET|| 'jWV5-fmAm2MUxG2Qplx-_cQPoGY';
+    const preset     = process.env.CLD_PRESET    || 'blue_pdfs';
 
     const timestamp = Math.floor(Date.now() / 1000);
     const publicId  = 'cotizaciones/' + safeFilename + '.pdf';
