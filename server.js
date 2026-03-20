@@ -1,9 +1,8 @@
 // server.js — Blue Comunicadores
-// Genera landing page, la guarda en GitHub y envía correo con Nodemailer
+// Genera landing page, la guarda en GitHub y envía correo con Brevo API
 
-const express    = require('express');
-const fetch      = require('node-fetch');
-const nodemailer = require('nodemailer');
+const express = require('express');
+const fetch   = require('node-fetch');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -17,9 +16,8 @@ const GH_HEADERS = {
   'User-Agent':    'blue-servidor'
 };
 
-const SMTP_USER = process.env.SMTP_USER;
-const SMTP_PASS = process.env.SMTP_PASS;
-const SMTP_FROM = process.env.SMTP_FROM || '"Blue Comunicadores" <administracion@bluecomunicadores.com>';
+const BREVO_KEY  = process.env.BREVO_API_KEY;
+const EMAIL_FROM = 'administracion@bluecomunicadores.com';
 
 app.use(express.json({ limit: '5mb' }));
 app.use((req, res, next) => {
@@ -335,23 +333,26 @@ app.post('/enviar-cotizacion', async (req, res) => {
     const landingHtml = generarLandingHTML(cotData);
     const landingUrl  = await guardarEnGitHub(safeId, landingHtml);
 
-    const transporter = nodemailer.createTransport({
-      host: 'smtp-relay.brevo.com',
-      port: 587,
-      secure: false,
-      auth: { user: SMTP_USER, pass: SMTP_PASS },
-      connectionTimeout: 10000,
-      greetingTimeout: 10000,
-      socketTimeout: 15000
+    console.log('Enviando correo vía Brevo API a:', toEmail);
+    const brevoResp = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        'accept':       'application/json',
+        'api-key':      BREVO_KEY,
+        'content-type': 'application/json'
+      },
+      body: JSON.stringify({
+        sender:      { name: 'Blue Comunicadores', email: EMAIL_FROM },
+        to:          [{ email: toEmail }],
+        subject:     'Cotización COT-' + cotData.cotNum + ' — Blue Comunicadores',
+        htmlContent: generarEmailHTML(cotData, landingUrl)
+      })
     });
 
-    console.log('SMTP conectando con usuario:', SMTP_USER ? SMTP_USER.slice(0,10)+'...' : 'NO DEFINIDO');
-    await transporter.sendMail({
-      from: SMTP_FROM,
-      to:   toEmail,
-      subject: 'Cotización COT-' + cotData.cotNum + ' — Blue Comunicadores',
-      html:    generarEmailHTML(cotData, landingUrl)
-    });
+    if (!brevoResp.ok) {
+      const errData = await brevoResp.json().catch(() => ({}));
+      throw new Error('Brevo error: ' + (errData.message || brevoResp.status));
+    }
     console.log('Correo enviado a:', toEmail);
 
     res.json({ ok: true, url: landingUrl });
