@@ -339,15 +339,20 @@ app.post('/enviar-cotizacion', async (req, res) => {
       host: 'smtp-relay.brevo.com',
       port: 587,
       secure: false,
-      auth: { user: SMTP_USER, pass: SMTP_PASS }
+      auth: { user: SMTP_USER, pass: SMTP_PASS },
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 15000
     });
 
+    console.log('SMTP conectando con usuario:', SMTP_USER ? SMTP_USER.slice(0,10)+'...' : 'NO DEFINIDO');
     await transporter.sendMail({
       from: SMTP_FROM,
       to:   toEmail,
       subject: 'Cotización COT-' + cotData.cotNum + ' — Blue Comunicadores',
       html:    generarEmailHTML(cotData, landingUrl)
     });
+    console.log('Correo enviado a:', toEmail);
 
     res.json({ ok: true, url: landingUrl });
 
