@@ -17,8 +17,9 @@ const GH_HEADERS = {
   'User-Agent':    'blue-servidor'
 };
 
-const GMAIL_USER = process.env.GMAIL_USER;
-const GMAIL_PASS = process.env.GMAIL_PASS;
+const SMTP_USER = process.env.SMTP_USER;
+const SMTP_PASS = process.env.SMTP_PASS;
+const SMTP_FROM = process.env.SMTP_FROM || '"Blue Comunicadores" <administracion@bluecomunicadores.com>';
 
 app.use(express.json({ limit: '5mb' }));
 app.use((req, res, next) => {
@@ -335,12 +336,14 @@ app.post('/enviar-cotizacion', async (req, res) => {
     const landingUrl  = await guardarEnGitHub(safeId, landingHtml);
 
     const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: { user: GMAIL_USER, pass: GMAIL_PASS }
+      host: 'smtp-relay.brevo.com',
+      port: 587,
+      secure: false,
+      auth: { user: SMTP_USER, pass: SMTP_PASS }
     });
 
     await transporter.sendMail({
-      from: '"Blue Comunicadores" <' + GMAIL_USER + '>',
+      from: SMTP_FROM,
       to:   toEmail,
       subject: 'Cotización COT-' + cotData.cotNum + ' — Blue Comunicadores',
       html:    generarEmailHTML(cotData, landingUrl)
