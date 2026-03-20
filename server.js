@@ -280,12 +280,9 @@ function generarEmailHTML(d, landingUrl) {
     <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
 
       <!-- Header -->
-      <tr><td style="background:linear-gradient(135deg,#0f2744,#1e6fb5);border-radius:16px 16px 0 0;padding:36px 40px;text-align:center;">
-        <div style="width:56px;height:56px;background:#fff;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px;">
-          <span style="font-size:28px;">📡</span>
-        </div>
-        <h1 style="margin:0;font-size:24px;font-weight:700;color:#fff;">Blue Comunicadores</h1>
-        <p style="margin:8px 0 0;font-size:14px;color:#93c5fd;">Tu cotización está lista</p>
+      <tr><td style="background:#4EB5EF;border-radius:16px 16px 0 0;padding:32px 40px;text-align:center;">
+        <img src="https://res.cloudinary.com/dmuj4p26r/image/upload/v1774040025/Blue_Color_pu4nwv.png" alt="Blue Comunicadores" style="height:70px;width:auto;display:block;margin:0 auto 14px;">
+        <p style="margin:0;font-size:14px;color:#fff;font-weight:600;opacity:.9;">Tu cotización está lista</p>
       </td></tr>
 
       <!-- Body -->
@@ -319,7 +316,7 @@ function generarEmailHTML(d, landingUrl) {
         <!-- CTA Button -->
         <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
           <tr><td align="center">
-            <a href="${landingUrl}" style="display:inline-block;background:linear-gradient(135deg,#0f2744,#1e6fb5);color:#fff;font-size:16px;font-weight:700;padding:16px 40px;border-radius:10px;text-decoration:none;letter-spacing:0.3px;">
+            <a href="${landingUrl}" style="display:inline-block;background:#4EB5EF;color:#fff;font-size:16px;font-weight:700;padding:16px 40px;border-radius:10px;text-decoration:none;letter-spacing:0.3px;">
               Ver tu cotización completa →
             </a>
           </td></tr>
