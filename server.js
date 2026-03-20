@@ -17,7 +17,7 @@ const GH_HEADERS = {
 };
 
 const BREVO_KEY  = process.env.BREVO_API_KEY;
-const EMAIL_FROM = 'administracion@bluecomunicadores.com';
+const EMAIL_FROM = 'digitalizadora1.isc@gmail.com';
 
 app.use(express.json({ limit: '5mb' }));
 app.use((req, res, next) => {
