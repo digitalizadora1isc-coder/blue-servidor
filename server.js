@@ -50,8 +50,8 @@ function esc(s) {
 // ── Genera HTML de la landing page ────────────────────────────────────────────
 
 function generarLandingHTML(d) {
-  const LOGO     = 'https://res.cloudinary.com/dmuj4p26r/image/upload/v1774040025/Blue_Color_pu4nwv.png';
-  const LOGO_HDR = 'https://res.cloudinary.com/dmuj4p26r/image/upload/v1774041183/logo1_av4kna.png';
+  const LOGO     = 'https://res.cloudinary.com/dmuj4p26r/image/upload/v1774045127/Blue_Negativo_eztxez.png';
+  const LOGO_HDR = 'https://res.cloudinary.com/dmuj4p26r/image/upload/v1774045127/Blue_Negativo_eztxez.png';
   const PHOTOS   = [
     'https://res.cloudinary.com/dmuj4p26r/image/upload/v1774041183/ips_lv02je.png',
     'https://res.cloudinary.com/dmuj4p26r/image/upload/v1774041183/cuaderno_b2bfk3.png',
@@ -66,30 +66,31 @@ function generarLandingHTML(d) {
      </div>`
   ).join('');
 
-  // Tabla: columnas # | Servicio | Descripción | P. Unit. | Total
-  const thStyle  = 'background:#4EB5EF;color:#fff;font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:0.8px;padding:7px 10px;border:1px solid #3aa0d8;vertical-align:middle;';
+  // Columnas visibles (enviadas por el frontend)
+  const cols = d.cols || { item:true, codigo:true, servicio:true, desc:true, imagen:false, tarifa:true };
+
+  const thS = 'background:#4EB5EF;color:#fff;font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:0.8px;padding:11px 12px;border:1px solid #3aa0d8;vertical-align:middle;';
   const theadRow = `<tr>
-    <th style="${thStyle}text-align:center;width:28px;">#</th>
-    ${(d.items||[]).length && d.items[0].cod ? `<th style="${thStyle}">Código</th>` : ''}
-    <th style="${thStyle}">Servicio</th>
-    <th style="${thStyle}">Descripción</th>
-    <th style="${thStyle}text-align:right;white-space:nowrap;">P. Unit.</th>
-    <th style="${thStyle}text-align:right;white-space:nowrap;">Total</th>
+    ${cols.item     ? `<th style="${thS}text-align:center;width:36px;">#</th>` : ''}
+    ${cols.codigo   ? `<th style="${thS}">Código</th>` : ''}
+    ${cols.servicio ? `<th style="${thS}">Servicio</th>` : ''}
+    ${cols.desc     ? `<th style="${thS}">Descripción</th>` : ''}
+    ${cols.imagen   ? `<th style="${thS}text-align:center;width:110px;">Imagen</th>` : ''}
+    ${cols.tarifa   ? `<th style="${thS}text-align:right;white-space:nowrap;">Tarifa</th>` : ''}
   </tr>`;
 
-  const hasCod = (d.items||[]).length > 0 && d.items[0].cod;
-  const colTotal = hasCod ? 6 : 5;
+  let colCount = [cols.item, cols.codigo, cols.servicio, cols.desc, cols.imagen, cols.tarifa].filter(Boolean).length;
 
   const rows = (d.items || []).map((it, idx) => {
-    const bg  = idx % 2 === 1 ? '#f8f8f8' : '#ffffff';
+    const bg  = idx % 2 === 1 ? '#f5f9fd' : '#ffffff';
     const tar = it.tar || it.total || 0;
     return `<tr>
-      <td style="background:${bg};padding:7px 10px;border:1px solid #4EB5EF;font-weight:700;font-size:12px;color:#000;text-align:center;vertical-align:top;">${it.num||idx+1}</td>
-      ${hasCod ? `<td style="background:${bg};padding:7px 10px;border:1px solid #4EB5EF;font-size:10px;color:#000;vertical-align:top;white-space:nowrap;">${esc(it.cod||'')}</td>` : ''}
-      <td style="background:${bg};padding:7px 10px;border:1px solid #4EB5EF;font-weight:700;font-size:11px;text-transform:uppercase;color:#000;vertical-align:top;line-height:1.4;">${esc(it.nom||'')}</td>
-      <td style="background:${bg};padding:7px 10px;border:1px solid #4EB5EF;font-size:10.5px;color:#333;vertical-align:top;line-height:1.55;white-space:pre-line;">${esc(it.desc||'')}</td>
-      <td style="background:${bg};padding:7px 10px;border:1px solid #4EB5EF;font-size:11px;color:#000;text-align:right;vertical-align:top;white-space:nowrap;">S/${fmt(tar)}</td>
-      <td style="background:${bg};padding:7px 10px;border:1px solid #4EB5EF;font-weight:700;font-size:12px;color:#000;text-align:right;vertical-align:top;white-space:nowrap;">S/${fmt(tar)}</td>
+      ${cols.item     ? `<td style="background:${bg};padding:11px 12px;border:1px solid #4EB5EF;font-weight:700;font-size:12px;color:#000;text-align:center;vertical-align:top;">${it.num||idx+1}</td>` : ''}
+      ${cols.codigo   ? `<td style="background:${bg};padding:11px 12px;border:1px solid #4EB5EF;font-size:10px;color:#1a75b8;font-weight:700;vertical-align:top;white-space:nowrap;">${esc(it.cod||'')}</td>` : ''}
+      ${cols.servicio ? `<td style="background:${bg};padding:11px 12px;border:1px solid #4EB5EF;font-weight:700;font-size:11px;text-transform:uppercase;color:#000;vertical-align:top;line-height:1.4;">${esc(it.nom||'')}</td>` : ''}
+      ${cols.desc     ? `<td style="background:${bg};padding:11px 12px;border:1px solid #4EB5EF;font-size:10.5px;color:#333;vertical-align:top;line-height:1.55;white-space:pre-line;">${esc(it.desc||'')}</td>` : ''}
+      ${cols.imagen   ? `<td style="background:${bg};padding:11px 12px;border:1px solid #4EB5EF;text-align:center;vertical-align:top;">${it.img ? `<img src="${it.img}" style="max-width:90px;max-height:70px;border-radius:4px;display:block;margin:0 auto;">` : '<span style="font-size:10px;color:#aaa;">—</span>'}</td>` : ''}
+      ${cols.tarifa   ? `<td style="background:${bg};padding:11px 12px;border:1px solid #4EB5EF;font-weight:700;font-size:12px;color:#000;text-align:right;vertical-align:top;white-space:nowrap;">S/${fmt(tar)}</td>` : ''}
     </tr>`;
   }).join('');
 
@@ -131,10 +132,11 @@ a{text-decoration:none;color:inherit;}
 .cli-fecha{font-size:11px;color:#444;line-height:1.3;margin-bottom:3px;}
 .cli-cotnum{font-size:12px;font-weight:700;color:#000;display:inline-block;border-bottom:2px solid #aaa;padding-bottom:2px;margin-top:4px;}
 .svc-wrap{padding:10px 28px 0;}
-.svc-table-wrap{border:2px solid #4EB5EF;border-radius:10px;overflow:hidden;margin-bottom:14px;}
-.svc-table{width:100%;border-collapse:collapse;border-spacing:0;font-family:Montserrat,Arial,sans-serif;}
-.svc-title{background:#4EB5EF;color:#fff;text-align:center;padding:10px 12px 8px;font-weight:800;font-size:12px;text-transform:uppercase;letter-spacing:1.5px;border:none;}
-.svc-title-sub{display:block;font-size:9px;font-weight:400;font-style:italic;text-transform:none;letter-spacing:0;opacity:0.92;margin-top:4px;}
+.svc-franja{background:#4EB5EF;padding:12px 28px 11px;margin-bottom:10px;}
+.svc-franja-title{color:#fff;font-weight:800;font-size:13px;text-align:center;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:5px;font-family:Montserrat,Arial,sans-serif;}
+.svc-franja-sub{color:#fff;font-size:9.5px;font-style:italic;text-align:center;opacity:0.95;line-height:1.5;font-family:Montserrat,Arial,sans-serif;}
+.svc-table-wrap{border:2px solid #4EB5EF;border-radius:12px;overflow:hidden;margin-bottom:14px;}
+.svc-table{width:100%;border-collapse:collapse;font-family:Montserrat,Arial,sans-serif;}
 .cons-wrap{padding:0 28px 6px;}
 .cons-title{font-weight:700;font-size:11px;color:#4EB5EF;text-decoration:underline;margin-bottom:8px;font-family:Montserrat,Arial,sans-serif;}
 .cierre{padding:0 28px 16px;}
@@ -183,22 +185,26 @@ a{text-decoration:none;color:inherit;}
     <span class="cli-cotnum">Cot. ${esc(d.cotNum)}</span>
   </div>
 
+  <!-- FRANJA PRESUPUESTO -->
+  <div class="svc-franja">
+    <p class="svc-franja-title">PRESUPUESTO DE SERVICIO</p>
+    <p class="svc-franja-sub">La presente comunicación busca hacerle llegar nuestros costos de las soluciones solicitadas a continuación:</p>
+  </div>
+
   <!-- TABLA SERVICIOS -->
   <div class="svc-wrap">
     <div class="svc-table-wrap">
-    <table class="svc-table">
-      <thead>
-        <tr><th colspan="${colTotal}" class="svc-title">PRESUPUESTO DE SERVICIO<span class="svc-title-sub">La presente comunicación busca hacerle llegar nuestros costos de las soluciones solicitadas a continuación:</span></th></tr>
-        ${theadRow}
-      </thead>
-      <tbody>
-        ${rows}
-        <tr>
-          <td colspan="${colTotal - 1}" style="background:#4EB5EF;padding:9px 12px;font-weight:800;font-size:12px;text-transform:uppercase;letter-spacing:1px;color:#fff;text-align:right;border:1px solid #3aa0d8;">TOTAL</td>
-          <td style="background:#4EB5EF;padding:9px 12px;font-weight:800;font-size:14px;color:#fff;text-align:right;border:1px solid #3aa0d8;white-space:nowrap;">S/${fmt(d.total)}</td>
-        </tr>
-      </tbody>
-    </table>
+      <table class="svc-table">
+        <thead>${theadRow}</thead>
+        <tbody>
+          ${rows}
+          <tr>
+            ${cols.tarifa ? `<td colspan="${colCount - 1}" style="background:#4EB5EF;padding:11px 12px;font-weight:800;font-size:12px;text-transform:uppercase;letter-spacing:1px;color:#fff;text-align:right;border:1px solid #3aa0d8;">TOTAL</td>
+            <td style="background:#4EB5EF;padding:11px 12px;font-weight:800;font-size:14px;color:#fff;text-align:right;border:1px solid #3aa0d8;white-space:nowrap;">S/${fmt(d.total)}</td>`
+            : `<td colspan="${colCount}" style="background:#4EB5EF;padding:11px 12px;font-weight:800;font-size:12px;text-transform:uppercase;letter-spacing:1px;color:#fff;text-align:right;border:1px solid #3aa0d8;">TOTAL: S/${fmt(d.total)}</td>`}
+          </tr>
+        </tbody>
+      </table>
     </div>
   </div>
 
@@ -278,7 +284,7 @@ function generarEmailHTML(d, landingUrl) {
 
       <!-- Header -->
       <tr><td style="background:#4EB5EF;border-radius:16px 16px 0 0;padding:32px 40px;text-align:center;">
-        <img src="https://res.cloudinary.com/dmuj4p26r/image/upload/v1774041183/logo1_av4kna.png" alt="Blue Comunicadores" style="height:70px;width:auto;display:block;margin:0 auto 14px;">
+        <img src="https://res.cloudinary.com/dmuj4p26r/image/upload/v1774045127/Blue_Negativo_eztxez.png" alt="Blue Comunicadores" style="height:70px;width:auto;display:block;margin:0 auto 14px;">
         <p style="margin:0;font-size:14px;color:#fff;font-weight:600;opacity:.9;">Tu cotización está lista</p>
       </td></tr>
 
