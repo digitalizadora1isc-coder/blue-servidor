@@ -80,8 +80,7 @@ app.post('/generar-pdf', async (req, res) => {
       contentType: 'application/pdf'
     });
     formData.append('upload_preset', uploadPreset);
-    formData.append('public_id', 'cotizaciones/' + safeFilename);
-    formData.append('resource_type', 'raw');
+    formData.append('public_id', 'cotizaciones/' + safeFilename + '.pdf');
 
     console.log('Subiendo a Cloudinary...');
 
@@ -98,8 +97,8 @@ app.post('/generar-pdf', async (req, res) => {
     const cldData = await cldResponse.json();
     console.log('Subido a Cloudinary:', cldData.secure_url);
 
-    // URL pública — se abre en el navegador (no descarga)
-    const publicUrl = cldData.secure_url.replace('/upload/', '/upload/fl_attachment:false/');
+    // URL pública — termina en .pdf para que el navegador lo abra directamente
+    const publicUrl = cldData.secure_url;
 
     return res.status(200).json({ ok: true, url: publicUrl });
 
