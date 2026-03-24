@@ -3,6 +3,7 @@
 
 const express = require('express');
 const fetch   = require('node-fetch');
+const mysql   = require('mysql2/promise');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -19,10 +20,21 @@ const GH_HEADERS = {
 const BREVO_KEY  = process.env.BREVO_API_KEY;
 const EMAIL_FROM = 'digitalizadora1.isc@gmail.com';
 
+// ── Conexión MySQL ────────────────────────────────────────────────────────────
+
+const pool = mysql.createPool({
+  host:             process.env.DB_HOST     || 'localhost',
+  user:             process.env.DB_USER     || 'bluelata_katiuska',
+  password:         process.env.DB_PASSWORD || 'mafalda1972',
+  database:         process.env.DB_NAME     || 'bluelata_aromatoweb',
+  waitForConnections: true,
+  connectionLimit:  10
+});
+
 app.use(express.json({ limit: '10mb' }));
 app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin',  '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, GET, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') return res.status(200).end();
   next();
@@ -47,6 +59,231 @@ function esc(s) {
     .replace(/"/g, '&quot;');
 }
 
+// ── ENDPOINTS MYSQL ───────────────────────────────────────────────────────────
+
+// POST /api/cotizacion/guardar
+app.post('/api/cotizacion/guardar', async (req, res) => {
+  const {
+    cotNum, fechaCot, fechaInput, ciudad, empresa, contacto,
+    cargo, email, telefono, firmanteCargo, notaInterna,
+    total, estado, creadoPor, servicios, consideraciones, columnas
+  } = req.body;
+
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+
+    // 1. Cliente
+    let clienteId = null;
+    if (empresa || contacto || email) {
+      const [rows] = await conn.query(
+        'SELECT id FROM clientes WHERE email = ? LIMIT 1', [email || '']
+      );
+      if (rows.length) {
+        clienteId = rows[0].id;
+        await conn.query(
+          'UPDATE clientes SET empresa=?, contacto=?, cargo=?, telefono=? WHERE id=?',
+          [empresa, contacto, cargo, telefono, clienteId]
+        );
+      } else {
+        const [ins] = await conn.query(
+          'INSERT INTO clientes (empresa, contacto, cargo, email, telefono) VALUES (?,?,?,?,?)',
+          [empresa, contacto, cargo, email, telefono]
+        );
+        clienteId = ins.insertId;
+      }
+    }
+
+    // 2. Cotización — si ya existe el cotNum la actualiza
+    const [existente] = await conn.query(
+      'SELECT id FROM cotizaciones WHERE cot_num = ? LIMIT 1', [cotNum]
+    );
+
+    let cotId;
+    const ahora = new Date().toLocaleString('es-PE');
+
+    if (existente.length) {
+      cotId = existente[0].id;
+      await conn.query(
+        `UPDATE cotizaciones SET
+         fecha_cot=?, fecha_input=?, ciudad=?, cliente_id=?, empresa=?,
+         contacto=?, cargo=?, email=?, telefono=?, firmante_cargo=?,
+         nota_interna=?, total=?, estado=?, modificado_por=?, modificado_en=NOW()
+         WHERE id=?`,
+        [fechaCot, fechaInput || null, ciudad, clienteId, empresa,
+         contacto, cargo, email, telefono, firmanteCargo,
+         notaInterna, total || 0, estado || 'creado', creadoPor, cotId]
+      );
+      // Borrar servicios y consideraciones para reinsertarlos
+      await conn.query('DELETE FROM cotizacion_servicios WHERE cotizacion_id=?', [cotId]);
+      await conn.query('DELETE FROM cotizacion_consideraciones WHERE cotizacion_id=?', [cotId]);
+      await conn.query('DELETE FROM cotizacion_columnas WHERE cotizacion_id=?', [cotId]);
+      // Timeline
+      await conn.query(
+        'INSERT INTO cotizacion_timeline (cotizacion_id, texto, fecha) VALUES (?,?,?)',
+        [cotId, 'Modificado por ' + creadoPor, ahora]
+      );
+    } else {
+      const [ins] = await conn.query(
+        `INSERT INTO cotizaciones
+         (cot_num, fecha_cot, fecha_input, ciudad, cliente_id, empresa,
+          contacto, cargo, email, telefono, firmante_cargo, nota_interna,
+          total, estado, creado_por)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        [cotNum, fechaCot, fechaInput || null, ciudad, clienteId, empresa,
+         contacto, cargo, email, telefono, firmanteCargo, notaInterna,
+         total || 0, estado || 'creado', creadoPor]
+      );
+      cotId = ins.insertId;
+      await conn.query(
+        'INSERT INTO cotizacion_timeline (cotizacion_id, texto, fecha) VALUES (?,?,?)',
+        [cotId, 'Creado por ' + creadoPor, ahora]
+      );
+    }
+
+    // 3. Servicios
+    if (servicios && servicios.length) {
+      for (let i = 0; i < servicios.length; i++) {
+        const s = servicios[i];
+        await conn.query(
+          `INSERT INTO cotizacion_servicios
+           (cotizacion_id, orden, codigo, nombre, descripcion, imagen_url, tarifa)
+           VALUES (?,?,?,?,?,?,?)`,
+          [cotId, i, s.cod || '', s.nom || '', s.desc || '', s.img || '', s.tar || 0]
+        );
+      }
+    }
+
+    // 4. Consideraciones
+    if (consideraciones && consideraciones.length) {
+      for (let i = 0; i < consideraciones.length; i++) {
+        await conn.query(
+          'INSERT INTO cotizacion_consideraciones (cotizacion_id, orden, texto) VALUES (?,?,?)',
+          [cotId, i, consideraciones[i]]
+        );
+      }
+    }
+
+    // 5. Columnas
+    if (columnas) {
+      await conn.query(
+        `INSERT INTO cotizacion_columnas
+         (cotizacion_id, col_item, col_codigo, col_servicio, col_descripcion, col_imagen, col_tarifa)
+         VALUES (?,?,?,?,?,?,?)`,
+        [cotId,
+         columnas.item    ? 1 : 0,
+         columnas.codigo  ? 1 : 0,
+         columnas.servicio? 1 : 0,
+         columnas.desc    ? 1 : 0,
+         columnas.imagen  ? 1 : 0,
+         columnas.tarifa  ? 1 : 0]
+      );
+    }
+
+    await conn.commit();
+    res.json({ ok: true, id: cotId });
+
+  } catch (e) {
+    await conn.rollback();
+    console.error('Error /api/cotizacion/guardar:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  } finally {
+    conn.release();
+  }
+});
+
+// GET /api/cotizacion/listar
+app.get('/api/cotizacion/listar', async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      `SELECT id, cot_num, fecha_cot, empresa, contacto,
+              total, estado, creado_por, creado_en, modificado_en
+       FROM cotizaciones ORDER BY creado_en DESC`
+    );
+
+    // Para cada cotización traer también su timeline
+    for (const cot of rows) {
+      const [tl] = await pool.query(
+        'SELECT texto, fecha FROM cotizacion_timeline WHERE cotizacion_id=? ORDER BY creado_en',
+        [cot.id]
+      );
+      cot.timeline = tl;
+    }
+
+    res.json({ ok: true, data: rows });
+  } catch (e) {
+    console.error('Error /api/cotizacion/listar:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// GET /api/cotizacion/ver/:id
+app.get('/api/cotizacion/ver/:id', async (req, res) => {
+  try {
+    const id = req.params.id;
+    const [[cot]]    = await pool.query('SELECT * FROM cotizaciones WHERE id=?', [id]);
+    if (!cot) return res.status(404).json({ ok: false, error: 'No encontrada' });
+
+    const [servs]    = await pool.query(
+      'SELECT * FROM cotizacion_servicios WHERE cotizacion_id=? ORDER BY orden', [id]
+    );
+    const [cons]     = await pool.query(
+      'SELECT * FROM cotizacion_consideraciones WHERE cotizacion_id=? ORDER BY orden', [id]
+    );
+    const [colsRows] = await pool.query(
+      'SELECT * FROM cotizacion_columnas WHERE cotizacion_id=?', [id]
+    );
+    const [timeline] = await pool.query(
+      'SELECT * FROM cotizacion_timeline WHERE cotizacion_id=? ORDER BY creado_en', [id]
+    );
+
+    res.json({
+      ok: true,
+      data: {
+        ...cot,
+        servicios:       servs,
+        consideraciones: cons,
+        columnas:        colsRows[0] || null,
+        timeline
+      }
+    });
+  } catch (e) {
+    console.error('Error /api/cotizacion/ver:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// DELETE /api/cotizacion/:id
+app.delete('/api/cotizacion/:id', async (req, res) => {
+  try {
+    await pool.query('DELETE FROM cotizaciones WHERE id=?', [req.params.id]);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('Error DELETE /api/cotizacion:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// PATCH /api/cotizacion/estado
+app.patch('/api/cotizacion/estado', async (req, res) => {
+  const { id, estado, usuario } = req.body;
+  try {
+    await pool.query(
+      'UPDATE cotizaciones SET estado=?, modificado_por=?, modificado_en=NOW() WHERE id=?',
+      [estado, usuario, id]
+    );
+    const ahora = new Date().toLocaleString('es-PE');
+    await pool.query(
+      'INSERT INTO cotizacion_timeline (cotizacion_id, texto, fecha) VALUES (?,?,?)',
+      [id, 'Estado cambiado a "' + estado + '" por ' + usuario, ahora]
+    );
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('Error PATCH /api/cotizacion/estado:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // ── Genera HTML de la landing page ────────────────────────────────────────────
 
 function generarLandingHTML(d) {
@@ -66,7 +303,6 @@ function generarLandingHTML(d) {
      </div>`
   ).join('');
 
-  // Columnas visibles (enviadas por el frontend)
   const cols = d.cols || { item:true, codigo:true, servicio:true, desc:true, imagen:false, tarifa:true };
 
   const thS = 'background:#4EB5EF;color:#fff;font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:0.8px;padding:11px 12px;border:1px solid #3aa0d8;vertical-align:middle;';
@@ -94,7 +330,6 @@ function generarLandingHTML(d) {
     </tr>`;
   }).join('');
 
-  // Consideraciones con - en #4EB5EF
   const consItems = (d.consideraciones || '').split('\n').filter(l => l.trim())
     .map(l => `<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:6px;">
       <span style="color:#4EB5EF;font-weight:700;font-size:12px;flex-shrink:0;margin-top:1px;">-</span>
@@ -108,7 +343,7 @@ function generarLandingHTML(d) {
   const firmCargoHtml = d.firmanteCargo
     ? `<p style="font-size:10px;color:#555;margin:2px 0 0;">${esc(d.firmanteCargo)}</p>` : '';
 
-  const waText  = encodeURIComponent('Hola, tengo una consulta sobre la cotización Cot. ' + (d.cotNum||''));
+  const waText   = encodeURIComponent('Hola, tengo una consulta sobre la cotización Cot. ' + (d.cotNum||''));
   const mailSubj = encodeURIComponent('Consulta cotización Cot. ' + (d.cotNum||''));
 
   return `<!DOCTYPE html>
@@ -151,8 +386,6 @@ a{text-decoration:none;color:inherit;}
 .ftr-info{font-size:9.5px;color:#fff;line-height:2;font-weight:600;font-family:Montserrat,Arial,sans-serif;}
 .ftr-banks{display:flex;flex-direction:column;gap:8px;align-items:flex-end;}
 .bank-row{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.18);border-radius:8px;padding:6px 12px;}
-.bank-logo-bcp{background:#e30613;border-radius:4px;padding:3px 7px;font-size:10px;font-weight:900;color:#fff;letter-spacing:0.5px;font-family:Arial,sans-serif;}
-.bank-logo-bbva{background:#004481;border-radius:4px;padding:3px 7px;font-size:10px;font-weight:900;color:#fff;letter-spacing:0.5px;font-family:Arial,sans-serif;}
 .bank-data{font-size:9px;font-weight:600;color:#fff;line-height:1.6;text-align:right;}
 @media(max-width:600px){
   .hdr-logo{width:120px;padding:10px 12px;}
@@ -167,16 +400,12 @@ a{text-decoration:none;color:inherit;}
 </head>
 <body>
 <div class="page">
-
-  <!-- HEADER: logo izq + 6 fotos reales -->
   <div class="hdr">
     <div class="hdr-logo">
       <img src="${LOGO_HDR}" style="max-height:82px;max-width:130px;width:auto;height:auto;display:block;" alt="Blue Comunicadores">
     </div>
     <div class="hdr-photos">${photosCells}</div>
   </div>
-
-  <!-- INFO CLIENTE -->
   <div class="cli">
     <p class="cli-empresa">${esc(d.empresa)}</p>
     <p class="cli-contacto">${esc(d.contacto)}</p>
@@ -184,14 +413,10 @@ a{text-decoration:none;color:inherit;}
     <p class="cli-fecha">${esc(d.ciudad||'Lima')}, ${esc(d.fecha)}</p>
     <span class="cli-cotnum">Cot. ${esc(d.cotNum)}</span>
   </div>
-
-  <!-- FRANJA PRESUPUESTO -->
   <div class="svc-franja">
     <p class="svc-franja-title">PRESUPUESTO DE SERVICIO</p>
     <p class="svc-franja-sub">La presente comunicación busca hacerle llegar nuestros costos de las soluciones solicitadas a continuación:</p>
   </div>
-
-  <!-- TABLA SERVICIOS -->
   <div class="svc-wrap">
     <div class="svc-table-wrap">
       <table class="svc-table">
@@ -207,14 +432,10 @@ a{text-decoration:none;color:inherit;}
       </table>
     </div>
   </div>
-
-  <!-- CONSIDERACIONES -->
   ${consItems ? `<div class="cons-wrap">
     <p class="cons-title">CONSIDERACIONES:</p>
     <div style="margin-bottom:12px;">${consItems}</div>
   </div>` : ''}
-
-  <!-- CIERRE + FIRMA -->
   <div class="cierre">
     <p style="font-size:10.5px;margin-bottom:10px;color:#000;line-height:1.6;">Estamos seguros de poder ofrecerle un servicio de calidad; quedamos a la espera de cualquier consulta o inquietud, sin otro particular.</p>
     <p style="font-size:10.5px;margin-bottom:4px;color:#000;">Atentamente,</p>
@@ -222,15 +443,11 @@ a{text-decoration:none;color:inherit;}
     <p class="firma-name">${esc(d.firmante||'ZARA ARKA')}</p>
     ${firmCargoHtml}
   </div>
-
-  <!-- CTA (solo web) -->
   <div class="cta-section">
     <p style="font-size:12px;color:#555;margin-bottom:14px;">¿Tienes alguna consulta sobre esta cotización?</p>
     <a class="btn-wa" href="https://wa.me/51${esc(d.whatsapp||'985568329')}?text=${waText}">💬 WhatsApp</a>
     <a class="btn-mail" href="mailto:sara@bluecomunicadores.com?subject=${mailSubj}">✉️ Enviar correo</a>
   </div>
-
-  <!-- FOOTER SOCIAL -->
   <div class="ftr-social">
     <a class="ftr-icon" href="https://www.tiktok.com/@bluecomunicadores" target="_blank" title="TikTok">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="#fff"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.32 6.32 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.18 8.18 0 004.78 1.52V6.78a4.85 4.85 0 01-1.01-.09z"/></svg>
@@ -246,8 +463,6 @@ a{text-decoration:none;color:inherit;}
     </a>
     <a href="https://www.bluecomunicadores.com" target="_blank" style="font-size:10px;font-weight:700;color:#0f2744;letter-spacing:0.5px;margin-left:6px;text-decoration:underline;">WWW.BLUECOMUNICADORES.COM</a>
   </div>
-
-  <!-- FOOTER PRINCIPAL -->
   <div class="ftr-main">
     <div class="ftr-info">
       Calle Las Acacias 270 Miraflores · Lima, Perú<br>
@@ -264,7 +479,6 @@ a{text-decoration:none;color:inherit;}
       </div>
     </div>
   </div>
-
 </div>
 </body>
 </html>`;
@@ -281,22 +495,16 @@ function generarEmailHTML(d, landingUrl) {
 <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f4f8;padding:32px 16px;">
   <tr><td align="center">
     <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
-
-      <!-- Header -->
       <tr><td style="background:#4EB5EF;border-radius:16px 16px 0 0;padding:32px 40px;text-align:center;">
         <img src="https://res.cloudinary.com/dmuj4p26r/image/upload/v1774045127/Blue_Negativo_eztxez.png" alt="Blue Comunicadores" style="height:70px;width:auto;display:block;margin:0 auto 14px;">
         <p style="margin:0;font-size:14px;color:#fff;font-weight:600;opacity:.9;">Tu cotización está lista</p>
       </td></tr>
-
-      <!-- Body -->
       <tr><td style="background:#fff;padding:36px 40px;">
         <p style="font-size:16px;color:#2d3748;margin:0 0 8px;">Hola, <strong>${esc(d.contacto || d.empresa)}</strong></p>
         <p style="font-size:14px;color:#4a5568;line-height:1.7;margin:0 0 24px;">
           Gracias por su interés en nuestros servicios. Adjuntamos la cotización
           <strong>COT-${esc(d.cotNum)}</strong> preparada especialmente para <strong>${esc(d.empresa)}</strong>.
         </p>
-
-        <!-- Resumen -->
         <table width="100%" cellpadding="0" cellspacing="0" style="background:#f7f9fc;border-radius:10px;margin-bottom:28px;">
           <tr>
             <td style="padding:16px 20px;border-bottom:1px solid #e8edf4;">
@@ -315,8 +523,6 @@ function generarEmailHTML(d, landingUrl) {
             </td>
           </tr>
         </table>
-
-        <!-- CTA Button -->
         <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
           <tr><td align="center">
             <a href="${landingUrl}" style="display:inline-block;background:#4EB5EF;color:#fff;font-size:16px;font-weight:700;padding:16px 40px;border-radius:10px;text-decoration:none;letter-spacing:0.3px;">
@@ -324,19 +530,15 @@ function generarEmailHTML(d, landingUrl) {
             </a>
           </td></tr>
         </table>
-
         <p style="font-size:13px;color:#9aa3b0;text-align:center;margin:0 0 4px;">O copia este enlace en tu navegador:</p>
         <p style="font-size:12px;color:#1e6fb5;text-align:center;margin:0;word-break:break-all;">${landingUrl}</p>
       </td></tr>
-
-      <!-- Footer -->
       <tr><td style="background:#f7f9fc;border-radius:0 0 16px 16px;padding:20px 40px;text-align:center;border-top:1px solid #e8edf4;">
         <p style="margin:0;font-size:13px;color:#9aa3b0;">
           <strong style="color:#0f2744;">Blue Comunicadores</strong> · Cotización válida por ${esc(d.vigencia || '30')} días<br>
           Este correo es confidencial y está dirigido exclusivamente al destinatario indicado.
         </p>
       </td></tr>
-
     </table>
   </td></tr>
 </table>
@@ -377,7 +579,6 @@ async function guardarEnGitHub(safeId, html) {
 }
 
 // ── POST /enviar-cotizacion ───────────────────────────────────────────────────
-// Recibe datos de la cotización, genera landing, la guarda en GitHub y envía correo
 
 app.post('/enviar-cotizacion', async (req, res) => {
   try {
@@ -386,11 +587,10 @@ app.post('/enviar-cotizacion', async (req, res) => {
       return res.status(400).json({ ok: false, error: 'Falta cotData o toEmail' });
     }
 
-    const safeId    = ('COT_' + (cotData.cotNum || 'x')).replace(/[^a-zA-Z0-9_-]/g, '_');
+    const safeId      = ('COT_' + (cotData.cotNum || 'x')).replace(/[^a-zA-Z0-9_-]/g, '_');
     const landingHtml = generarLandingHTML(cotData);
     const landingUrl  = await guardarEnGitHub(safeId, landingHtml);
 
-    console.log('Enviando correo vía Brevo API a:', toEmail);
     const brevoResp = await fetch('https://api.brevo.com/v3/smtp/email', {
       method: 'POST',
       headers: {
@@ -410,7 +610,6 @@ app.post('/enviar-cotizacion', async (req, res) => {
       const errData = await brevoResp.json().catch(() => ({}));
       throw new Error('Brevo error: ' + (errData.message || brevoResp.status));
     }
-    console.log('Correo enviado a:', toEmail);
 
     res.json({ ok: true, url: landingUrl });
 
@@ -420,8 +619,7 @@ app.post('/enviar-cotizacion', async (req, res) => {
   }
 });
 
-// ── POST /guardar-cotizacion ─────────────────────────────────────────────────
-// Mantiene compatibilidad: solo guarda sin enviar correo
+// ── POST /guardar-cotizacion ──────────────────────────────────────────────────
 
 app.post('/guardar-cotizacion', async (req, res) => {
   try {
@@ -451,13 +649,12 @@ app.get('/cotizacion/:id', async (req, res) => {
 
     if (!rawResp.ok) {
       return res.status(404).send(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Página no encontrada</title>
 <style>body{font-family:Arial,sans-serif;background:#0f2744;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;}
 .box{background:#fff;border-radius:16px;padding:48px 40px;text-align:center;max-width:400px;}
 h2{color:#0f2744;font-size:20px;margin-bottom:8px;}p{color:#9aa3b0;font-size:14px;}</style>
 </head><body><div class="box"><h2>Cotización no encontrada</h2>
-<p>Este enlace puede haber expirado o el ID no existe.<br>Solicita un nuevo enlace a Blue Comunicadores.</p></div></body></html>`);
+<p>Este enlace puede haber expirado o el ID no existe.</p></div></body></html>`);
     }
 
     const html = await rawResp.text();
