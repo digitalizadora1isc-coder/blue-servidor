@@ -518,7 +518,7 @@ function generarEmailHTML(d, landingUrl) {
   <tr><td align="center">
     <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
       <tr><td style="background:#4EB5EF;border-radius:16px 16px 0 0;padding:20px 40px;text-align:center;">
-        <img src="https://res.cloudinary.com/dmuj4p26r/image/upload/v1774045127/Blue_Negativo_eztxez.png" alt="Blue Comunicadores" style="height:80px;width:auto;display:block;margin:0 auto 10px;">
+        <img src="https://res.cloudinary.com/dmuj4p26r/image/upload/v1774045127/Blue_Negativo_eztxez.png" alt="Blue Comunicadores" style="height:120px;width:auto;display:block;margin:0 auto 10px;">
         <p style="margin:0;font-size:14px;color:#fff;font-weight:600;opacity:.9;">Tu cotización está lista</p>
       </td></tr>
       <tr><td style="background:#fff;padding:36px 40px;">
