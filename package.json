@@ -2,9 +2,9 @@
   "name": "blue-servidor",
   "version": "1.0.0",
   "description": "Servidor Blue Comunicadores — landing pages en GitHub + correo con Brevo API",
-  "main": "server.js",
+  "main": "servidor.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node servidor.js"
   },
   "dependencies": {
     "express": "^4.18.2",
