@@ -22,7 +22,6 @@ const EMAIL_FROM = 'automatizacion@bluecomunicadores.com';
 
 // ── Conexión PostgreSQL ───────────────────────────────────────────────────────
 
-const { Pool } = require('pg');
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL || 'postgresql://blue_db_9kte_user:8yNtE5XlBjWCoTlbw7jZ0gyojuCQmFJo@dpg-d71fb0ffte5s73a1lkrg-a.oregon-postgres.render.com/blue_db_9kte',
   ssl: { rejectUnauthorized: false }
@@ -58,7 +57,6 @@ function esc(s) {
 
 // ── ENDPOINTS POSTGRESQL ─────────────────────────────────────────────────────
 
-// Crear tablas si no existen
 async function initDB() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS clientes (
@@ -142,7 +140,6 @@ app.post('/api/cotizacion/guardar', async (req, res) => {
   try {
     await client.query('BEGIN');
 
-    // 1. Cliente
     let clienteId = null;
     if (empresa || contacto || email) {
       const r = await client.query('SELECT id FROM clientes WHERE email=$1 LIMIT 1', [email||'']);
@@ -161,7 +158,6 @@ app.post('/api/cotizacion/guardar', async (req, res) => {
       }
     }
 
-    // 2. Cotización
     const existente = await client.query('SELECT id FROM cotizaciones WHERE cot_num=$1 LIMIT 1',[cotNum]);
     let cotId;
     const ahora = new Date().toLocaleString('es-PE');
@@ -197,7 +193,6 @@ app.post('/api/cotizacion/guardar', async (req, res) => {
       );
     }
 
-    // 3. Servicios
     if (servicios && servicios.length) {
       for (let i=0;i<servicios.length;i++) {
         const s=servicios[i];
@@ -208,7 +203,6 @@ app.post('/api/cotizacion/guardar', async (req, res) => {
       }
     }
 
-    // 4. Consideraciones
     if (consideraciones && consideraciones.length) {
       for (let i=0;i<consideraciones.length;i++) {
         await client.query(
@@ -218,7 +212,6 @@ app.post('/api/cotizacion/guardar', async (req, res) => {
       }
     }
 
-    // 5. Columnas
     if (columnas) {
       await client.query(
         'INSERT INTO cotizacion_columnas(cotizacion_id,col_item,col_codigo,col_servicio,col_descripcion,col_imagen,col_tarifa) VALUES($1,$2,$3,$4,$5,$6,$7)',
@@ -475,7 +468,7 @@ a{text-decoration:none;color:inherit;}
   <div class="cta-section">
     <p style="font-size:12px;color:#555;margin-bottom:14px;">¿Tienes alguna consulta sobre esta cotización?</p>
     <a class="btn-wa" href="https://wa.me/51${esc(d.whatsapp||'985568329')}?text=${waText}">💬 WhatsApp</a>
-    <a class="btn-mail" href="mailto:sara@bluecomunicadores.com?subject=${mailSubj}">✉️ Enviar correo</a>
+    <a class="btn-mail" href="mailto:automatizacion@bluecomunicadores.com?subject=${mailSubj}">✉️ Enviar correo</a>
   </div>
   <div class="ftr-social">
     <a class="ftr-icon" href="https://www.tiktok.com/@bluecomunicadores" target="_blank" title="TikTok">
@@ -496,7 +489,7 @@ a{text-decoration:none;color:inherit;}
     <div class="ftr-info">
       Calle Las Acacias 270 Miraflores · Lima, Perú<br>
       C +51 985 568 329<br>
-      sara@bluecomunicadores.com<br>
+      automatizacion@bluecomunicadores.com<br>
       administracion@bluecomunicadores.com
     </div>
     <div class="ftr-banks">
