@@ -518,13 +518,13 @@ function generarEmailHTML(d, landingUrl) {
   <tr><td align="center">
     <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
       <tr><td style="background:#4EB5EF;border-radius:16px 16px 0 0;padding:32px 40px;text-align:center;">
-        <img src="https://res.cloudinary.com/dmuj4p26r/image/upload/v1774045127/Blue_Negativo_eztxez.png" alt="Blue Comunicadores" style="height:120px;width:auto;display:block;margin:0 auto 14px;">
+        <img src="https://res.cloudinary.com/dmuj4p26r/image/upload/v1774045127/Blue_Negativo_eztxez.png" alt="Blue Comunicadores" style="height:200px;width:auto;display:block;margin:0 auto 14px;">
         <p style="margin:0;font-size:14px;color:#fff;font-weight:600;opacity:.9;">Tu cotización está lista</p>
       </td></tr>
       <tr><td style="background:#fff;padding:36px 40px;">
         <p style="font-size:16px;color:#2d3748;margin:0 0 8px;">Hola, <strong>${esc(d.contacto || d.empresa)}</strong></p>
         <p style="font-size:14px;color:#4a5568;line-height:1.7;margin:0 0 24px;">
-          Gracias por su interés en nuestros servicios. Adjuntamos la cotización
+          Gracias por su interés en nuestros servicios. Adjuntamos la propuesta
           <strong>COT-${esc(d.cotNum)}</strong> preparada especialmente para <strong>${esc(d.empresa)}</strong>.
         </p>
         <table width="100%" cellpadding="0" cellspacing="0" style="background:#f7f9fc;border-radius:10px;margin-bottom:28px;">
