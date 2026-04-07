@@ -18,7 +18,7 @@ const GH_HEADERS = {
 };
 
 const BREVO_KEY  = process.env.BREVO_API_KEY;
-const EMAIL_FROM = 'digitalizadora1.isc@gmail.com';
+const EMAIL_FROM = 'automatizacion@bluecomunicadores.com';
 
 // ── Conexión PostgreSQL ───────────────────────────────────────────────────────
 
