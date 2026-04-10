@@ -309,7 +309,6 @@ app.patch('/api/cotizacion/estado', async (req, res) => {
 // ── Genera HTML de la landing page ────────────────────────────────────────────
 
 function generarLandingHTML(d) {
-  const LOGO     = 'https://res.cloudinary.com/dmuj4p26r/image/upload/v1774045127/Blue_Negativo_eztxez.png';
   const LOGO_HDR = 'https://res.cloudinary.com/dmuj4p26r/image/upload/v1774045127/Blue_Negativo_eztxez.png';
   const PHOTOS   = [
     'https://res.cloudinary.com/dmuj4p26r/image/upload/v1774041183/ips_lv02je.png',
@@ -604,7 +603,8 @@ async function guardarEnGitHub(safeId, html) {
 
 app.post('/enviar-cotizacion', async (req, res) => {
   try {
-    const { cotData, toEmail } = req.body;
+    // ✅ CAMBIO: se agrega ccEmail al destructuring
+    const { cotData, toEmail, ccEmail } = req.body;
     if (!cotData || !toEmail) {
       return res.status(400).json({ ok: false, error: 'Falta cotData o toEmail' });
     }
@@ -612,6 +612,9 @@ app.post('/enviar-cotizacion', async (req, res) => {
     const safeId      = ('COT_' + (cotData.cotNum || 'x')).replace(/[^a-zA-Z0-9_-]/g, '_');
     const landingHtml = generarLandingHTML(cotData);
     const landingUrl  = await guardarEnGitHub(safeId, landingHtml);
+
+    // ✅ CAMBIO: construir CC solo si viene un email válido
+    const ccArray = ccEmail && ccEmail.trim() ? [{ email: ccEmail.trim() }] : [];
 
     const brevoResp = await fetch('https://api.brevo.com/v3/smtp/email', {
       method: 'POST',
@@ -623,6 +626,8 @@ app.post('/enviar-cotizacion', async (req, res) => {
       body: JSON.stringify({
         sender:      { name: 'Blue Comunicadores', email: EMAIL_FROM },
         to:          [{ email: toEmail }],
+        // ✅ CAMBIO: CC dinámico — solo se incluye si hay correo en el campo
+        ...(ccArray.length > 0 && { cc: ccArray }),
         subject:     'Cotización COT-' + cotData.cotNum + ' — Blue Comunicadores',
         htmlContent: generarEmailHTML(cotData, landingUrl)
       })
