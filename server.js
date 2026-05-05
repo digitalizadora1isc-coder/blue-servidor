@@ -1,31 +1,30 @@
 // servidor.js — Blue Comunicadores v3
-// Genera PDFs con PDFShift, los sube a Cloudinary y envía correos con Brevo API
-// Base de datos: Firebase Firestore (manejada desde el frontend)
-// ❌ PostgreSQL eliminado — ya no se usa
+// - PDFs generados con PDFShift y enviados directo al navegador (sin Cloudinary)
+// - Landing pages guardadas en GitHub
+// - Correos enviados con Brevo
+// - Datos en Firebase Firestore (manejado desde el frontend)
+// ❌ PostgreSQL eliminado
+// ❌ Cloudinary para PDFs eliminado (las imágenes del HTML siguen en Cloudinary, pero el PDF no)
 
-const express  = require('express');
-const fetch    = require('node-fetch');
-const FormData = require('form-data');
+const express = require('express');
+const fetch   = require('node-fetch');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
 
 // ── Variables de entorno ──────────────────────────────────────────────────────
-const GH_TOKEN = process.env.GITHUB_TOKEN;
-const GH_OWNER = 'digitalizadora1isc-coder';
-const GH_REPO  = 'blue-cotizaciones';
+const GH_TOKEN   = process.env.GITHUB_TOKEN;
+const GH_OWNER   = 'digitalizadora1isc-coder';
+const GH_REPO    = 'blue-cotizaciones';
 const GH_HEADERS = {
   'Authorization': 'token ' + GH_TOKEN,
   'Content-Type':  'application/json',
   'User-Agent':    'blue-servidor'
 };
 
-const BREVO_KEY  = process.env.BREVO_API_KEY;
-const EMAIL_FROM = 'automatizacion@bluecomunicadores.com';
-
+const BREVO_KEY    = process.env.BREVO_API_KEY;
+const EMAIL_FROM   = 'automatizacion@bluecomunicadores.com';
 const PDFSHIFT_KEY = process.env.PDFSHIFT_KEY;
-const CLD_CLOUD    = process.env.CLD_CLOUD;
-const CLD_PRESET   = process.env.CLD_PRESET;
 
 // ── Middlewares ───────────────────────────────────────────────────────────────
 app.use(express.json({ limit: '15mb' }));
@@ -58,7 +57,7 @@ function esc(s) {
 
 // ── POST /generar-pdf ─────────────────────────────────────────────────────────
 // Recibe: { html: string, filename: string }
-// Devuelve: { ok: true, url: string } con la URL pública del PDF en Cloudinary
+// Devuelve: el PDF directo como descarga al navegador
 app.post('/generar-pdf', async (req, res) => {
   try {
     const { html, filename } = req.body;
@@ -66,7 +65,7 @@ app.post('/generar-pdf', async (req, res) => {
 
     const safeName = (filename || 'cotizacion').replace(/[^a-zA-Z0-9_-]/g, '_');
 
-    // 1. Generar PDF con PDFShift
+    // Generar PDF con PDFShift
     const pdfResp = await fetch('https://api.pdfshift.io/v3/convert/pdf', {
       method: 'POST',
       headers: {
@@ -87,25 +86,11 @@ app.post('/generar-pdf', async (req, res) => {
 
     const pdfBuffer = await pdfResp.buffer();
 
-    // 2. Subir PDF a Cloudinary con upload preset
-    const form = new FormData();
-    form.append('file',          pdfBuffer, { filename: safeName + '.pdf', contentType: 'application/pdf' });
-    form.append('upload_preset', CLD_PRESET);
-    form.append('public_id',     'cotizaciones/' + safeName);
-    form.append('resource_type', 'raw');
-
-    const cldResp = await fetch(
-      `https://api.cloudinary.com/v1_1/${CLD_CLOUD}/raw/upload`,
-      { method: 'POST', body: form, headers: form.getHeaders() }
-    );
-
-    if (!cldResp.ok) {
-      const err = await cldResp.json().catch(() => ({}));
-      throw new Error('Cloudinary error: ' + (err.error?.message || cldResp.status));
-    }
-
-    const cldData = await cldResp.json();
-    res.json({ ok: true, url: cldData.secure_url });
+    // Mandar el PDF directo al navegador como descarga
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'attachment; filename="' + safeName + '.pdf"');
+    res.setHeader('Content-Length', pdfBuffer.length);
+    res.send(pdfBuffer);
 
   } catch (e) {
     console.error('Error /generar-pdf:', e.message);
@@ -164,7 +149,7 @@ function generarLandingHTML(d) {
     </div>`)
     .join('');
 
-  const cargoHtml    = d.cargo        ? `<p style="font-size:11px;color:#555;margin:1px 0 8px;font-family:Montserrat,Arial,sans-serif;">${esc(d.cargo)}</p>` : `<div style="margin-bottom:8px;"></div>`;
+  const cargoHtml     = d.cargo         ? `<p style="font-size:11px;color:#555;margin:1px 0 8px;font-family:Montserrat,Arial,sans-serif;">${esc(d.cargo)}</p>` : `<div style="margin-bottom:8px;"></div>`;
   const firmCargoHtml = d.firmanteCargo ? `<p style="font-size:10px;color:#555;margin:2px 0 0;">${esc(d.firmanteCargo)}</p>` : '';
 
   const waText   = encodeURIComponent('Hola, tengo una consulta sobre la cotización Cot. ' + (d.cotNum||''));
