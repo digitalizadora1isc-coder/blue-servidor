@@ -1,10 +1,10 @@
 // servidor.js — Blue Comunicadores v3
-// - PDFs generados con PDFShift y enviados directo al navegador (sin Cloudinary)
+// - PDFs generados con PDFShift y subidos a GitHub (URL pública)
 // - Landing pages guardadas en GitHub
 // - Correos enviados con Brevo
 // - Datos en Firebase Firestore (manejado desde el frontend)
 // ❌ PostgreSQL eliminado
-// ❌ Cloudinary para PDFs eliminado (las imágenes del HTML siguen en Cloudinary, pero el PDF no)
+// ❌ Cloudinary para PDFs eliminado
 
 const express = require('express');
 const fetch   = require('node-fetch');
@@ -55,9 +55,41 @@ function esc(s) {
     .replace(/"/g, '&quot;');
 }
 
+// ── Sube archivo a GitHub y devuelve URL pública ──────────────────────────────
+async function subirAGitHub(filePath, buffer, mensaje) {
+  const content = buffer.toString('base64');
+
+  // Verificar si ya existe para obtener el sha
+  let sha;
+  const checkResp = await fetch(
+    'https://api.github.com/repos/' + GH_OWNER + '/' + GH_REPO + '/contents/' + filePath,
+    { headers: GH_HEADERS }
+  );
+  if (checkResp.ok) {
+    const checkData = await checkResp.json();
+    sha = checkData.sha;
+  }
+
+  const body = { message: mensaje, content };
+  if (sha) body.sha = sha;
+
+  const uploadResp = await fetch(
+    'https://api.github.com/repos/' + GH_OWNER + '/' + GH_REPO + '/contents/' + filePath,
+    { method: 'PUT', headers: GH_HEADERS, body: JSON.stringify(body) }
+  );
+
+  if (!uploadResp.ok) {
+    const err = await uploadResp.json().catch(() => ({}));
+    throw new Error('GitHub error: ' + (err.message || uploadResp.status));
+  }
+
+  // URL pública raw de GitHub
+  return 'https://raw.githubusercontent.com/' + GH_OWNER + '/' + GH_REPO + '/main/' + filePath;
+}
+
 // ── POST /generar-pdf ─────────────────────────────────────────────────────────
 // Recibe: { html: string, filename: string }
-// Devuelve: el PDF directo como descarga al navegador
+// Devuelve: { ok: true, url: string } con URL pública del PDF en GitHub
 app.post('/generar-pdf', async (req, res) => {
   try {
     const { html, filename } = req.body;
@@ -65,7 +97,7 @@ app.post('/generar-pdf', async (req, res) => {
 
     const safeName = (filename || 'cotizacion').replace(/[^a-zA-Z0-9_-]/g, '_');
 
-    // Generar PDF con PDFShift
+    // 1. Generar PDF con PDFShift
     const pdfResp = await fetch('https://api.pdfshift.io/v3/convert/pdf', {
       method: 'POST',
       headers: {
@@ -86,11 +118,12 @@ app.post('/generar-pdf', async (req, res) => {
 
     const pdfBuffer = await pdfResp.buffer();
 
-    // Mandar el PDF directo al navegador como descarga
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', 'attachment; filename="' + safeName + '.pdf"');
-    res.setHeader('Content-Length', pdfBuffer.length);
-    res.send(pdfBuffer);
+    // 2. Subir PDF a GitHub en carpeta /pdfs/
+    const filePath = 'pdfs/' + safeName + '.pdf';
+    const url = await subirAGitHub(filePath, pdfBuffer, 'PDF ' + safeName);
+
+    // 3. Devolver URL pública — igual que antes esperaba el frontend
+    res.json({ ok: true, url });
 
   } catch (e) {
     console.error('Error /generar-pdf:', e.message);
@@ -349,31 +382,8 @@ function generarEmailHTML(d, landingUrl) {
 // ── Guarda HTML en GitHub ─────────────────────────────────────────────────────
 async function guardarEnGitHub(safeId, html) {
   const filePath = 'pages/' + safeId + '.html';
-  const content  = Buffer.from(html).toString('base64');
-
-  let sha;
-  const checkResp = await fetch(
-    'https://api.github.com/repos/' + GH_OWNER + '/' + GH_REPO + '/contents/' + filePath,
-    { headers: GH_HEADERS }
-  );
-  if (checkResp.ok) {
-    const checkData = await checkResp.json();
-    sha = checkData.sha;
-  }
-
-  const body = { message: 'Cotización ' + safeId, content };
-  if (sha) body.sha = sha;
-
-  const uploadResp = await fetch(
-    'https://api.github.com/repos/' + GH_OWNER + '/' + GH_REPO + '/contents/' + filePath,
-    { method: 'PUT', headers: GH_HEADERS, body: JSON.stringify(body) }
-  );
-
-  if (!uploadResp.ok) {
-    const err = await uploadResp.json().catch(() => ({}));
-    throw new Error('GitHub error: ' + (err.message || uploadResp.status));
-  }
-
+  const buffer   = Buffer.from(html);
+  const url      = await subirAGitHub(filePath, buffer, 'Cotización ' + safeId);
   return 'https://blue-servidor.onrender.com/cotizacion/' + safeId;
 }
 
