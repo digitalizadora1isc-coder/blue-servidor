@@ -1,11 +1,11 @@
-// server.js — Blue Comunicadores v3
-// Genera PDFs con Puppeteer, los sube a Cloudinary y envía correos con Brevo API
+// servidor.js — Blue Comunicadores v3
+// Genera PDFs con PDFShift, los sube a Cloudinary y envía correos con Brevo API
 // Base de datos: Firebase Firestore (manejada desde el frontend)
 // ❌ PostgreSQL eliminado — ya no se usa
 
-const express = require('express');
-const fetch   = require('node-fetch');
-const puppeteer = require('puppeteer');
+const express  = require('express');
+const fetch    = require('node-fetch');
+const FormData = require('form-data');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -23,11 +23,9 @@ const GH_HEADERS = {
 const BREVO_KEY  = process.env.BREVO_API_KEY;
 const EMAIL_FROM = 'automatizacion@bluecomunicadores.com';
 
-// Cloudinary — configura estas variables de entorno en Render:
-// CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET
-const CLOUDINARY_CLOUD  = process.env.CLOUDINARY_CLOUD_NAME;
-const CLOUDINARY_KEY    = process.env.CLOUDINARY_API_KEY;
-const CLOUDINARY_SECRET = process.env.CLOUDINARY_API_SECRET;
+const PDFSHIFT_KEY = process.env.PDFSHIFT_KEY;
+const CLD_CLOUD    = process.env.CLD_CLOUD;
+const CLD_PRESET   = process.env.CLD_PRESET;
 
 // ── Middlewares ───────────────────────────────────────────────────────────────
 app.use(express.json({ limit: '15mb' }));
@@ -41,7 +39,7 @@ app.use((req, res, next) => {
 
 // ── Health check ──────────────────────────────────────────────────────────────
 app.get('/', (_req, res) => {
-  res.json({ ok: true, mensaje: 'Blue Servidor v3 OK ✅ (sin PostgreSQL)' });
+  res.json({ ok: true, mensaje: 'Blue Servidor v3 OK ✅' });
 });
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -58,87 +56,58 @@ function esc(s) {
     .replace(/"/g, '&quot;');
 }
 
-// ── Subir PDF a Cloudinary ────────────────────────────────────────────────────
-async function subirACloudinary(pdfBuffer, filename) {
-  // Cloudinary acepta upload via multipart con el SDK o via API directa
-  const crypto = require('crypto');
-  const timestamp = Math.floor(Date.now() / 1000);
-  const publicId  = 'cotizaciones/' + filename;
-
-  // Firma para upload autenticado
-  const toSign = `public_id=${publicId}&timestamp=${timestamp}${CLOUDINARY_SECRET}`;
-  const signature = crypto.createHash('sha1').update(toSign).digest('hex');
-
-  // Convertir buffer a base64 data URI
-  const base64PDF = pdfBuffer.toString('base64');
-  const dataUri   = 'data:application/pdf;base64,' + base64PDF;
-
-  const formData = new URLSearchParams();
-  formData.append('file',       dataUri);
-  formData.append('public_id',  publicId);
-  formData.append('timestamp',  timestamp);
-  formData.append('api_key',    CLOUDINARY_KEY);
-  formData.append('signature',  signature);
-  formData.append('resource_type', 'raw'); // PDFs van como 'raw'
-
-  const resp = await fetch(
-    `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/raw/upload`,
-    { method: 'POST', body: formData }
-  );
-
-  if (!resp.ok) {
-    const err = await resp.json().catch(() => ({}));
-    throw new Error('Cloudinary error: ' + (err.error?.message || resp.status));
-  }
-
-  const data = await resp.json();
-  return data.secure_url; // URL pública permanente del PDF
-}
-
 // ── POST /generar-pdf ─────────────────────────────────────────────────────────
 // Recibe: { html: string, filename: string }
 // Devuelve: { ok: true, url: string } con la URL pública del PDF en Cloudinary
 app.post('/generar-pdf', async (req, res) => {
-  let browser;
   try {
     const { html, filename } = req.body;
     if (!html) return res.status(400).json({ ok: false, error: 'Falta el HTML' });
 
     const safeName = (filename || 'cotizacion').replace(/[^a-zA-Z0-9_-]/g, '_');
 
-    // 1. Lanzar Puppeteer y generar PDF
-    browser = await puppeteer.launch({
-      headless: 'new',
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-gpu',
-        '--no-first-run',
-        '--no-zygote',
-        '--single-process'
-      ]
+    // 1. Generar PDF con PDFShift
+    const pdfResp = await fetch('https://api.pdfshift.io/v3/convert/pdf', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Basic ' + Buffer.from('api:' + PDFSHIFT_KEY).toString('base64'),
+        'Content-Type':  'application/json'
+      },
+      body: JSON.stringify({
+        source:    html,
+        landscape: false,
+        use_print: false
+      })
     });
 
-    const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: 'networkidle0', timeout: 30000 });
+    if (!pdfResp.ok) {
+      const err = await pdfResp.json().catch(() => ({}));
+      throw new Error('PDFShift error: ' + (err.error || pdfResp.status));
+    }
 
-    const pdfBuffer = await page.pdf({
-      format: 'A4',
-      printBackground: true,
-      margin: { top: '10mm', right: '10mm', bottom: '10mm', left: '10mm' }
-    });
+    const pdfBuffer = await pdfResp.buffer();
 
-    await browser.close();
-    browser = null;
+    // 2. Subir PDF a Cloudinary con upload preset
+    const form = new FormData();
+    form.append('file',          pdfBuffer, { filename: safeName + '.pdf', contentType: 'application/pdf' });
+    form.append('upload_preset', CLD_PRESET);
+    form.append('public_id',     'cotizaciones/' + safeName);
+    form.append('resource_type', 'raw');
 
-    // 2. Subir PDF a Cloudinary
-    const url = await subirACloudinary(pdfBuffer, safeName);
+    const cldResp = await fetch(
+      `https://api.cloudinary.com/v1_1/${CLD_CLOUD}/raw/upload`,
+      { method: 'POST', body: form, headers: form.getHeaders() }
+    );
 
-    res.json({ ok: true, url });
+    if (!cldResp.ok) {
+      const err = await cldResp.json().catch(() => ({}));
+      throw new Error('Cloudinary error: ' + (err.error?.message || cldResp.status));
+    }
+
+    const cldData = await cldResp.json();
+    res.json({ ok: true, url: cldData.secure_url });
 
   } catch (e) {
-    if (browser) await browser.close().catch(() => {});
     console.error('Error /generar-pdf:', e.message);
     res.status(500).json({ ok: false, error: e.message });
   }
@@ -173,7 +142,7 @@ function generarLandingHTML(d) {
     ${cols.tarifa   ? `<th style="${thS}text-align:right;white-space:nowrap;">Tarifa</th>` : ''}
   </tr>`;
 
-  let colCount = [cols.item, cols.codigo, cols.servicio, cols.desc, cols.imagen, cols.tarifa].filter(Boolean).length;
+  const colCount = [cols.item, cols.codigo, cols.servicio, cols.desc, cols.imagen, cols.tarifa].filter(Boolean).length;
 
   const rows = (d.items || []).map((it, idx) => {
     const bg  = idx % 2 === 1 ? '#f5f9fd' : '#ffffff';
@@ -195,11 +164,8 @@ function generarLandingHTML(d) {
     </div>`)
     .join('');
 
-  const cargoHtml = d.cargo
-    ? `<p style="font-size:11px;color:#555;margin:1px 0 8px;font-family:Montserrat,Arial,sans-serif;">${esc(d.cargo)}</p>`
-    : `<div style="margin-bottom:8px;"></div>`;
-  const firmCargoHtml = d.firmanteCargo
-    ? `<p style="font-size:10px;color:#555;margin:2px 0 0;">${esc(d.firmanteCargo)}</p>` : '';
+  const cargoHtml    = d.cargo        ? `<p style="font-size:11px;color:#555;margin:1px 0 8px;font-family:Montserrat,Arial,sans-serif;">${esc(d.cargo)}</p>` : `<div style="margin-bottom:8px;"></div>`;
+  const firmCargoHtml = d.firmanteCargo ? `<p style="font-size:10px;color:#555;margin:2px 0 0;">${esc(d.firmanteCargo)}</p>` : '';
 
   const waText   = encodeURIComponent('Hola, tengo una consulta sobre la cotización Cot. ' + (d.cotNum||''));
   const mailSubj = encodeURIComponent('Consulta cotización Cot. ' + (d.cotNum||''));
@@ -224,10 +190,10 @@ a{text-decoration:none;color:inherit;}
 .cli-contacto{font-size:13px;font-weight:600;color:#000;line-height:1.3;margin-bottom:1px;}
 .cli-fecha{font-size:11px;color:#444;line-height:1.3;margin-bottom:3px;}
 .cli-cotnum{font-size:12px;font-weight:700;color:#000;display:inline-block;border-bottom:2px solid #aaa;padding-bottom:2px;margin-top:4px;}
-.svc-wrap{padding:10px 28px 0;}
 .svc-franja{background:#4EB5EF;padding:12px 28px 11px;margin-bottom:10px;}
 .svc-franja-title{color:#fff;font-weight:800;font-size:13px;text-align:center;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:5px;font-family:Montserrat,Arial,sans-serif;}
 .svc-franja-sub{color:#fff;font-size:9.5px;font-style:italic;text-align:center;opacity:0.95;line-height:1.5;font-family:Montserrat,Arial,sans-serif;}
+.svc-wrap{padding:10px 28px 0;}
 .svc-table-wrap{border:2px solid #4EB5EF;border-radius:12px;overflow:hidden;margin-bottom:14px;}
 .svc-table{width:100%;border-collapse:collapse;font-family:Montserrat,Arial,sans-serif;}
 .cons-wrap{padding:0 28px 6px;}
